@@ -16,9 +16,7 @@ app.add_middleware(
 def root():
     return {"message": "Backend running"}
 
-# ------------------------
-# New route to test DB
-# ------------------------
+# Test Database Connection
 @app.get("/test-db")
 def test_database():
     return {"message": test_db_connection()}
