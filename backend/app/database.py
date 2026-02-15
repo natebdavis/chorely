@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
 # Explicitly point to .env in backend folder
-dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+dotenv_path = os.path.join(os.path.dirname(__file__), "..\..", ".env")
 load_dotenv(dotenv_path)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
