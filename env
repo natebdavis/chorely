@@ -1,0 +1,13 @@
+# =========================
+# DATABASE
+# =========================
+DATABASE_URL=postgresql://postgres:MOIKJBA1EYBTlPh0@db.hxnfdduifuqqjxwzgyhj.supabase.co:5432/postgres
+
+
+# =========================
+# SECURITY
+# =========================
+SECRET_KEY=sb_publishable_HsrdDoDALctS231Qi4Dbcw_csu3VbZZ
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
