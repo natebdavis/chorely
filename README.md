@@ -18,7 +18,7 @@ Run the Expo frontend and FastAPI backend in one command.
 
 ## 3. Start the Project
 
-Run the following command to build and start both frontend and backend containers:
+Run the following command in the root folder to build and start both frontend and backend containers:
 
 ```bash
 docker-compose up --build
