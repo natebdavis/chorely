@@ -25,7 +25,7 @@ docker-compose up --build
 ```
 
 * **Backend API:** http://localhost:8000
-* **Frontend (Expo DevTools):** http://localhost:19002
+* **Frontend (Expo DevTools):** http://localhost:8081
 * **Expo Go on phone:**
   * Scan the QR code shown in DevTools
   * Make sure your phone is on the same network as your computer
