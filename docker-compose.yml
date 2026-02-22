@@ -1,0 +1,26 @@
+version: '3.9'
+
+services:
+  backend:
+    build: ./backend
+    container_name: backend-1
+    volumes:
+      - ./backend:/app          # Backend code
+      - ./.env:/app/.env        # Mount the root .env into container
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: frontend-1
+    # Expose all relevant Expo / Metro ports
+    ports:
+      - "19000:19000"  # Expo / Metro Bundler
+      - "19001:19001"  # Expo DevTools
+      - "19002:19002"  # React Native Web / QR codes
+      - "8081:8081"    # Classic React Native Metro port
+    volumes:
+      - ./frontend:/app  # Mount project for live reload
+    environment:
+      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+    command: npx expo start --lan

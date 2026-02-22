@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import test_db_connection  # import the DB test function
+from app.database import test_db_connection  # import the DB test function
 
 app = FastAPI()
 
@@ -27,5 +27,3 @@ def test_backend():
     print(message)  # Print backend test message on startup
     message = test_database()["message"]
     print(message)  # Print DB connection result on startup
-
-test_backend()  # Run tests on startup
