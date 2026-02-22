@@ -8,7 +8,6 @@ Run the Expo frontend and FastAPI backend in one command.
 
 - [Docker](https://www.docker.com/get-started)  
 - [Docker Compose](https://docs.docker.com/compose/install/)  
-- Optional: [Expo Go](https://expo.dev/client) on your phone  
 
 ---
 
@@ -26,9 +25,6 @@ docker-compose up --build
 
 * **Backend API:** http://localhost:8000
 * **Frontend (Expo DevTools):** http://localhost:8081
-* **Expo Go on phone:**
-  * Scan the QR code shown in DevTools
-  * Make sure your phone is on the same network as your computer
 * **Hot Reload:** Both backend and frontend code changes will automatically reload.
 
 ## 4. Stop the Project
@@ -41,4 +37,8 @@ docker-compose down
 
 * This stops both backend and frontend containers
 * Removes containers from Docker, but keeps images for faster rebuilds
+
+## Notes:
+
+Don't know how to get Expo Go Running. Can still run App with Android Emulator.
 
