@@ -4,9 +4,10 @@ services:
   backend:
     build: ./backend
     container_name: backend-1
+    env_file:
+      - ./.env
     volumes:
-      - ./backend:/app          # Backend code
-      - ./.env:/app/.env        # Mount the root .env into container
+      - ./backend:/app
     ports:
       - "8000:8000"
 
