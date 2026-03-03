@@ -1,23 +1,52 @@
-import os
-from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
-import pathlib
+from collections.abc import Iterable
+from typing import Optional
 
-# Load environment variables from .env file in root folder
-load_dotenv(dotenv_path=pathlib.Path(__file__).resolve().parent.parent / '.env')
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+def get_users(household: int) -> Iterable[User]:
+    """get collection of all users in household"""
+    pass
 
-if DATABASE_URL is None:
-    raise ValueError("DATABASE_URL not found in .env")
+def get_chores(household: int) -> Iterable[Chore]:
+    """get collection of all users in household"""
+    pass
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+def check_updates(users: Iterable[User], chores: Iterable[Chore]) -> bool:
+    """check if server database is different from user database"""
+    pass
 
-# Test database connection by executing a simple query
-def test_db_connection():
-    try:
-        with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
-            return "Database connected successfully"
-    except Exception as e:
-        return f"Database connection failed: {str(e)}"
+def fetch(users: Iterable[User], chores: Iterable[Chore]):
+    """get changes from server"""
+    pass
+
+def add_user(household: int, user: User):
+    """add user to database"""
+    pass
+
+def remove_user(household: int, user: User):
+    """remove user from database"""
+    pass
+
+def add_chore(household: int, chore: Chore):
+    """add chore to database"""
+    pass
+
+def remove_chore(household: int, chore: Chore):
+    """remove chore from database"""
+    pass
+
+def update_chore(household: int, chore: Chore):
+    """change chore data in database"""
+    pass
+
+def add_notification(household: int, chore: Chore, notification: Notification):
+    """add notification to database"""
+    pass
+
+def update_notification(household: int, chore: Chore, notification: Notification):
+    """remove notification from database"""
+    pass
+
+def remove_notification(household: int, chore: Chore, notification: Notification):
+    """change notification data in database"""
+    pass
+

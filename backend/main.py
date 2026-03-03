@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import test_db_connection  # import the DB test function
+from backend.app.database_test import test_db_connection  # import the DB test function
 
 app = FastAPI()
 
