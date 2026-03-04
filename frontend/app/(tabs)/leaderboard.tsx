@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet } from "react-native";
 
-export default function ChoreBoard() {
+export default function Leaderboard() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Chore Board View (Home Screen)</Text>
+      <Text style={styles.text}>Leaderboard</Text>
     </View>
   );
 }
