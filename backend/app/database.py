@@ -1,5 +1,7 @@
 from collections.abc import Iterable
-from typing import Optional
+
+from backend.app.chore import Chore, Notification
+from backend.app.user import User
 
 
 def get_users(household: int) -> Iterable[User]:
