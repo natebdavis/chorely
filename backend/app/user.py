@@ -39,7 +39,7 @@ class User:
         return self._email
 
     @email.setter
-    def email(self, email) -> bool:
+    def email(self, email: str) -> bool:
         """Setter for `email` if a valid email is given change the email to the new one, if not keep
         the original email.
         Output: `True` if was able to change email to new value, `False` if otherwise."""
@@ -65,3 +65,4 @@ def get_notifs(user: User, chores: Iterable[Chore]) -> Set[Notification]:
     for chore in chores:
         if chore.assignee == user:
             notifications.update(chore.notifications)
+    return notifications
