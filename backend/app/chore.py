@@ -33,9 +33,6 @@ class Chore:
     due_date: DT.datetime
     requester: User
     """User who requested the Chore."""
-    assignee: Optional[User]
-    """User tasked with Completing Chore."""
-    status: Status
     notifications: Iterable[Notification]
 
     def __init__(self, name: str, description: str, due_date: DT.datetime, requester: User, 
@@ -51,9 +48,31 @@ class Chore:
         self.request_date = DT.datetime.now(pytz.utc)
         self.due_date = due_date
         self.requester = requester
-        self.assignee = assignee
-        if (assignee != None):
-            self.status = Status.IN_PROGRESS
-        else:
-            self.status = Status.UNASSIGNED
+        self._assignee = assignee
+        self.request_date = DT.datetime.now(pytz.utc)
+        self._status = Status.IN_PROGRESS if self._assignee else Status.UNASSIGNED
         self.notifications = set()
+
+    @property
+    def status(self) -> Status:
+        return self._status
+    
+    @status.setter
+    def status(self, status: Status):
+        self._status = status
+    
+    @property
+    def assignee(self) -> Optional[User]:
+        """User that is tasked with completeing the `Chore`."""
+        return self._assignee
+    
+    @assignee.setter
+    def assignee(self, assignee: Optional[User]):
+        """Setter for `assignee`, if `assignee` was null and given a new `User` also
+        change the `Chore`'s `status` to In Progress. If given null as the new `assignee`
+        value then change `status` to unassigned."""
+        if not self._assignee and assignee:
+            self.status = Status.IN_PROGRESS
+        elif self._assignee and not assignee:
+            self.status = Status.UNASSIGNED
+        self._assignee = assignee
