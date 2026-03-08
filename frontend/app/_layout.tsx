@@ -1,11 +1,14 @@
 import { Stack } from "expo-router";
 
+import { ChoreProvider } from "../components/ChoreContext";
+
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+    <ChoreProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </ChoreProvider>
   );
 }
-
