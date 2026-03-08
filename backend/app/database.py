@@ -3,6 +3,10 @@ from collections.abc import Iterable
 from backend.app.chore import Chore, Notification
 from backend.app.user import User
 
+"""
+Module for managing operations with the local and server database.
+Contributers: Nathaniel Davis
+"""
 
 def get_users(household: int) -> Iterable[User]:
     """get collection of all users in household"""
