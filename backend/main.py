@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database_test import test_db_connection  # import the DB test function
 from app.controllers.chore_controller import router as chore_router
 from app.controllers.auth_controller import router as auth_router
+from app.controllers.user_controller import router as user_router
 
 app = FastAPI()
 
@@ -16,6 +17,7 @@ app.add_middleware(
 
 app.include_router(chore_router)
 app.include_router(auth_router)
+app.include_router(user_router)
 
 @app.get("/")
 def root():
