@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 
-from backend.app.chore import Chore, Notification
-from backend.app.user import User
+from app.chore import Chore, Notification
+from app.user import User
 
 """
 Module for managing operations with the local and server database.

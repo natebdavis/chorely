@@ -3,7 +3,7 @@ import re
 from collections.abc import Iterable
 from typing import Set
 
-from backend.app.chore import Chore, Notification
+from app.chore import Chore, Notification
 
 
 """
