@@ -107,3 +107,21 @@ class Chore(CreateFromDict):
         elif self._assignee and not assignee:
             self.status = Status.UNASSIGNED
         self._assignee = assignee
+
+
+'''
+Issue with Code can not have two files import each other at same time,
+maybe have database.py handle these operations instead.
+
+def get_chores(user: User, chores: Iterable[Chore]) -> Set[Chore]:
+    """Get all chores that a user is assigned to"""
+    return {chore for chore in chores if chore.assignee == user}
+
+def get_notifs(user: User, chores: Iterable[Chore]) -> Set[Notification]:
+    """Get all notifications for chores that a user is assigned to"""
+    notifications: Set[Notification] = set()
+    for chore in chores:
+        if chore.assignee == user:
+            notifications.update(chore.notifications)
+    return notifications
+'''
