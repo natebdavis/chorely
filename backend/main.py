@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.database_test import test_db_connection  # import the DB test function
+from app.database_test import test_db_connection  # import the DB test function
+from app.controllers.chore_controller import router as chore_router
+from app.controllers.auth_controller import router as auth_router
 
 app = FastAPI()
 
@@ -11,6 +13,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(chore_router)
+app.include_router(auth_router)
 
 @app.get("/")
 def root():

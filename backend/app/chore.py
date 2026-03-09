@@ -9,7 +9,7 @@ import pytz
 
 """
 Module for managing Chore operations.
-Contributers: Gilligan Berlinski, Nathaniel Davis
+Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
 
 class Status(Enum):
