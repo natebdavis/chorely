@@ -38,6 +38,13 @@ export default function Register() {
 
             <Text style={styles.buttonText}>Register</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+          style={styles.secondaryButton}
+           onPress={() => router.push("/login")}>
+
+            <Text style={styles.secondaryButtonText}>Back to Login</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ImageBackground>
@@ -86,5 +93,15 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  secondaryButton: {
+    alignItems: "center",
+    marginTop: 14,
+  },
+  secondaryButtonText: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
