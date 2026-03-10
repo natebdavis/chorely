@@ -1,4 +1,4 @@
-from backend.app.user import User
+from app.user import User
 
 """
 Module for managing a household.

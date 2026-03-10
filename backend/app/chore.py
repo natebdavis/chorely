@@ -1,7 +1,9 @@
 from collections.abc import Iterable
 import datetime as DT
 from typing import Optional
-from user import User
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.user import User
 from enum import Enum, auto
 import pytz
 
@@ -9,7 +11,7 @@ from misc import CreateFromDict
 
 """
 Module for managing Chore operations.
-Contributers: Gilligan Berlinski
+Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
 
 class Chore_Col_Name(Enum):
@@ -43,7 +45,7 @@ class Chore(CreateFromDict):
     description: str
     request_date: DT.datetime
     due_date: DT.datetime
-    requester: User
+    requester: "User"
     """User who requested the Chore."""
     notifications: Iterable[Notification]
 
@@ -93,12 +95,12 @@ class Chore(CreateFromDict):
         self._status = status
     
     @property
-    def assignee(self) -> Optional[User]:
+    def assignee(self) -> Optional["User"]:
         """User that is tasked with completeing the `Chore`."""
         return self._assignee
     
     @assignee.setter
-    def assignee(self, assignee: Optional[User]):
+    def assignee(self, assignee: Optional["User"]):
         """Setter for `assignee`, if `assignee` was null and given a new `User` also
         change the `Chore`'s `status` to In Progress. If given null as the new `assignee`
         value then change `status` to unassigned."""
