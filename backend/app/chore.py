@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from app.user import User
 from enum import Enum, auto
 import pytz
+from pydantic import BaseModel
 
 from misc import CreateFromDict
 
@@ -49,7 +50,7 @@ class Chore(CreateFromDict):
     """User who requested the Chore."""
     notifications: Iterable[Notification]
 
-    ddef __init__(self, name: str, description: str, due_date: DT.datetime, requester: "User",
+    def __init__(self, name: str, description: str, due_date: DT.datetime, requester: "User",
              assignee: Optional["User"] = None):
         """Constructor for Chore Class.
         Inputs: `Assignee` can be initially null or can be assigned on creation, 
@@ -108,6 +109,8 @@ class Chore(CreateFromDict):
         elif self._assignee and not assignee:
             self.status = Status.UNASSIGNED
         self._assignee = assignee
+
+    def createBaseModel()
 
 
 '''
