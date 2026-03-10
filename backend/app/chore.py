@@ -49,9 +49,8 @@ class Chore(CreateFromDict):
     """User who requested the Chore."""
     notifications: Iterable[Notification]
 
-    def __init__(self, name: str, description: str, request_date: Optional[DT.datetime], 
-                 due_date: DT.datetime, requester: User, assignee: Optional[User], 
-                 status: Optional[Status]):
+    ddef __init__(self, name: str, description: str, due_date: DT.datetime, requester: "User",
+             assignee: Optional["User"] = None):
         """Constructor for Chore Class.
         Inputs: `Assignee` can be initially null or can be assigned on creation, 
         `request_date` will be auto-generated on creation if not given, `status` will be set to

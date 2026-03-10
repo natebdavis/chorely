@@ -4,6 +4,9 @@ from app.database_test import test_db_connection  # import the DB test function
 from app.controllers.chore_controller import router as chore_router
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.user_controller import router as user_router
+from app.controllers.household_controller import router as household_router
+from app.controllers.notification_controller import router as notification_router
+from app.controllers.membership_controller import router as membership_router
 
 app = FastAPI()
 
@@ -18,6 +21,9 @@ app.add_middleware(
 app.include_router(chore_router)
 app.include_router(auth_router)
 app.include_router(user_router)
+app.include_router(household_router)
+app.include_router(notification_router)
+app.include_router(membership_router)
 
 @app.get("/")
 def root():

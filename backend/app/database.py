@@ -6,9 +6,9 @@ import pathlib
 from fastapi import FastAPI, Depends, HTTPException, status
 from supabase import Client, create_client
 
-from chore import Chore, Notification, Chore_Col_Name
-from user import User, User_Col_Name
-from misc import CreateFromDict
+from app.chore import Chore, Notification, Chore_Col_Name
+from app.user import User, User_Col_Name
+from app.misc import CreateFromDict
 
 
 """

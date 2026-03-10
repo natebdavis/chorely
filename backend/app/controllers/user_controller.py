@@ -2,6 +2,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 
+from app.database import get_users, get_user, add_user
+from app.user import User
+
 """
 Module for managing User Controller operations.
 Handles HTTP requests related to Users and exposes API endpoints
@@ -18,22 +21,23 @@ class UserCreateRequest(BaseModel):
     Request body schema for creating a new User.
 
     Inputs:
-        username: Unique username of the User.
+        username: Username of the User.
         fname: First name of the User.
         lname: Last name of the User.
         email: Email address of the User.
-        phone_num: Optional phone number of the User.
-        password: Password of the User.
+        phone_num: Optional phone number.
+        householdid: Household the user belongs to.
 
     Output:
         JSON body representing a User creation request.
     """
+
     username: str
     fname: str
     lname: str
     email: str
     phone_num: Optional[int] = None
-    password: str
+    householdid: int
 
 
 class UserResponse(BaseModel):
@@ -41,152 +45,102 @@ class UserResponse(BaseModel):
     Response schema returned for User-related API requests.
 
     Outputs:
-        username: Unique username of the User.
+        username: Username of the User.
         fname: First name of the User.
         lname: Last name of the User.
-        email: Email address of the User.
-        phone_num: Optional phone number of the User.
+        email: Email address.
+        phone_num: Optional phone number.
     """
+
     username: str
     fname: str
     lname: str
-    email: str
-    phone_num: Optional[int] = None
+    email: Optional[str]
+    phone_num: Optional[int]
 
 
-class TempStoredUser(BaseModel):
+@router.get("/users/{householdid}", response_model=List[UserResponse])
+def get_household_users(householdid: int):
     """
-    Temporary in-memory User schema used for backend testing.
+    Retrieve all Users belonging to a household.
 
     Inputs:
-        username: Unique username of the User.
-        fname: First name of the User.
-        lname: Last name of the User.
-        email: Email address of the User.
-        phone_num: Optional phone number of the User.
-        password: Password of the User.
-
-    Output:
-        Temporary User object for testing storage and retrieval.
-    """
-    username: str
-    fname: str
-    lname: str
-    email: str
-    phone_num: Optional[int] = None
-    password: str
-
-
-"""
-Temporary in-memory storage for Users.
-
-This acts as a placeholder until persistent database-backed
-User storage is implemented.
-"""
-fake_users: List[TempStoredUser] = [
-    TempStoredUser(
-        username="edmund",
-        fname="Edmund",
-        lname="Krajewski",
-        email="edmund@example.com",
-        phone_num=None,
-        password="password123"
-    ),
-    TempStoredUser(
-        username="nate",
-        fname="Nathaniel",
-        lname="Davis",
-        email="nate@example.com",
-        phone_num=None,
-        password="password123"
-    ),
-]
-
-
-@router.get("/users", response_model=List[UserResponse])
-def get_users():
-    """
-    Retrieve all Users currently stored.
-
-    Inputs:
-        None
+        householdid: Identifier of the household.
 
     Outputs:
-        List of all Users currently in the system, excluding passwords.
+        List of UserResponse objects.
+
+    Raises:
+        HTTPException(404) if no users exist for that household.
     """
+
+    users = get_users(householdid)
+
+    if not users:
+        raise HTTPException(status_code=404, detail="No users found")
+
     return [
         UserResponse(
-            username=user.username,
-            fname=user.fname,
-            lname=user.lname,
-            email=user.email,
-            phone_num=user.phone_num
+            username=u.username,
+            fname=u.fname,
+            lname=u.lname,
+            email=u.email,
+            phone_num=u.phone_num,
         )
-        for user in fake_users
+        for u in users
     ]
 
 
-@router.get("/users/{username}", response_model=UserResponse)
-def get_user(username: str):
+@router.get("/user/{userid}", response_model=UserResponse)
+def get_single_user(userid: int):
     """
-    Retrieve a single User by username.
+    Retrieve a single User by userid.
 
     Inputs:
-        username: Unique username of the User to retrieve.
+        userid: Unique identifier for the user.
 
     Outputs:
-        UserResponse for the requested User.
+        UserResponse object.
 
     Raises:
-        HTTPException(404) if the User does not exist.
+        HTTPException(404) if user is not found.
     """
-    for user in fake_users:
-        if user.username == username:
-            return UserResponse(
-                username=user.username,
-                fname=user.fname,
-                lname=user.lname,
-                email=user.email,
-                phone_num=user.phone_num
-            )
 
-    raise HTTPException(status_code=404, detail="User not found")
+    user = get_user(userid)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return UserResponse(
+        username=user.username,
+        fname=user.fname,
+        lname=user.lname,
+        email=user.email,
+        phone_num=user.phone_num,
+    )
 
 
-@router.post("/users", response_model=UserResponse)
+@router.post("/users")
 def create_user(request: UserCreateRequest):
     """
-    Create a new User.
+    Create a new User in the database.
 
     Inputs:
-        request: UserCreateRequest containing the new User's
-                 account and profile information.
+        request: UserCreateRequest containing account information.
 
     Outputs:
-        UserResponse representing the newly created User.
-
-    Raises:
-        HTTPException(400) if the username is already taken.
+        Success message if user creation succeeds.
     """
-    for user in fake_users:
-        if user.username == request.username:
-            raise HTTPException(status_code=400, detail="Username already exists")
 
-    new_user = TempStoredUser(
+    user = User(
         username=request.username,
+        userid=0,  # placeholder until database assigns ID
         fname=request.fname,
         lname=request.lname,
         email=request.email,
         phone_num=request.phone_num,
-        password=request.password
     )
 
-    fake_users.append(new_user)
+    add_user(request.householdid, user)
 
-    return UserResponse(
-        username=new_user.username,
-        fname=new_user.fname,
-        lname=new_user.lname,
-        email=new_user.email,
-        phone_num=new_user.phone_num
-    )
+    return {"message": "User created successfully"}
