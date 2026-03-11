@@ -23,12 +23,12 @@ export default function Register() {
           style={styles.input} />
           
           <TextInput 
-          placeholder="Password" secureTextEntry 
+          placeholder="Password" 
            placeholderTextColor="#666"
           style={styles.input} />
 
           <TextInput 
-          placeholder="Confirm Password" secureTextEntry 
+          placeholder="Confirm Password" 
            placeholderTextColor="#666"
           style={styles.input} />
 
