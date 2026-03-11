@@ -1,4 +1,6 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground } from "react-native";
+//This is the Registration Screen
+
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Image } from "react-native";
 import { router } from "expo-router";
 
 export default function Register() {
@@ -10,6 +12,12 @@ export default function Register() {
     >
       <View style={styles.container}>
         <View style={styles.card}>
+
+          <Image //this is the logo
+              source={require("../assets/images/chorely_logo.png")}
+              style={styles.logo}
+          />
+
           <Text style={styles.title}>Create an Account</Text>
 
           <TextInput 
@@ -103,5 +111,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     textDecorationLine: "underline",
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+    alignSelf: "center"
   },
 });

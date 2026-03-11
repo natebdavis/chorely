@@ -1,6 +1,6 @@
 // this is the Login Screen 
 
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ImageBackground } from "react-native";
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ImageBackground, Image } from "react-native";
 import { router } from "expo-router";
 
 export default function Login() {
@@ -11,7 +11,7 @@ export default function Login() {
       resizeMode="cover"
     >
       <View style={styles.container}>
-        
+
         {/* Question about registering */}
         <Text style={styles.signupText}>
           Not registered yet?{" "}
@@ -20,8 +20,14 @@ export default function Login() {
           >Sign up here</Text>
         </Text>
 
-        {/* Glass Login Box */}
+        {/* white login box */}
        <View style={styles.card}>
+
+           <Image //this is the logo
+             source={require("../assets/images/chorely_logo.png")}
+            style={styles.logo}
+            />
+
           <Text style={styles.title}>Welcome to Chorely!</Text>
 
           <TextInput //this is where a user will enter their username 
@@ -103,6 +109,12 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+    alignSelf: "center"
   },
 });
 
