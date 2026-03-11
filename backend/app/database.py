@@ -172,13 +172,6 @@ def remove_user(household: int, user: User):
     pass
 
 def add_chore(household: int, chore: Chore, client: Optional[Client] = None):
-<<<<<<< Updated upstream
-    """Add chore to database"""
-
-    if client is None:
-        client = get_client()
-
-=======
     """
     Add chore to database.
 
@@ -193,27 +186,10 @@ def add_chore(household: int, chore: Chore, client: Optional[Client] = None):
     if client is None:
         client = get_client()
 
->>>>>>> Stashed changes
     data = {
         Chore_Col_Name.householdid.value: household,
         Chore_Col_Name.cname.value: chore.name,
         Chore_Col_Name.description.value: chore.description,
-<<<<<<< Updated upstream
-        Chore_Col_Name.requester.value: chore.requester.userid,
-        Chore_Col_Name.assignee.value: chore.assignee.userid if chore.assignee else None,
-        Chore_Col_Name.status.value: chore.status.name,
-        Chore_Col_Name.request_date.value: chore.request_date.isoformat(),
-        Chore_Col_Name.due_date.value: chore.due_date.isoformat()
-    }
-
-    response = client.table("chores").insert(data).execute()
-
-    return response.data
-
-def remove_chore(household: int, chore: Chore, client: Optional[Client] = None):
-    """Remove chore from database"""
-
-=======
         Chore_Col_Name.request_date.value: chore.request_date.isoformat(),
         Chore_Col_Name.due_date.value: chore.due_date.isoformat(),
         Chore_Col_Name.requester.value: chore.requester.userid,
@@ -237,7 +213,6 @@ def remove_chore(household: int, choreid: int, client: Optional[Client] = None):
     Output:
         Deleted row data returned from Supabase.
     """
->>>>>>> Stashed changes
     if client is None:
         client = get_client()
 
@@ -246,21 +221,13 @@ def remove_chore(household: int, choreid: int, client: Optional[Client] = None):
         .table("chores")
         .delete()
         .eq(Chore_Col_Name.householdid.value, household)
-<<<<<<< Updated upstream
-        .eq(Chore_Col_Name.cname.value, chore.name)
-=======
         .eq(Chore_Col_Name.choreid.value, choreid)
->>>>>>> Stashed changes
         .execute()
     )
 
     return response.data
 
 def update_chore(household: int, chore: Chore, client: Optional[Client] = None):
-<<<<<<< Updated upstream
-    """Update chore data in database"""
-
-=======
     """
     Update chore data in database.
 
@@ -272,16 +239,10 @@ def update_chore(household: int, chore: Chore, client: Optional[Client] = None):
     Output:
         Updated row data returned from Supabase.
     """
->>>>>>> Stashed changes
     if client is None:
         client = get_client()
 
     data = {
-<<<<<<< Updated upstream
-        Chore_Col_Name.assignee.value: chore.assignee.userid if chore.assignee else None,
-        Chore_Col_Name.status.value: chore.status.name,
-        Chore_Col_Name.due_date.value: chore.due_date.isoformat()
-=======
         Chore_Col_Name.cname.value: chore.name,
         Chore_Col_Name.description.value: chore.description,
         Chore_Col_Name.request_date.value: chore.request_date.isoformat(),
@@ -289,7 +250,6 @@ def update_chore(household: int, chore: Chore, client: Optional[Client] = None):
         Chore_Col_Name.requester.value: chore.requester.userid,
         Chore_Col_Name.assignee.value: chore.assignee.userid if chore.assignee else None,
         Chore_Col_Name.status.value: chore.status.name,
->>>>>>> Stashed changes
     }
 
     response = (

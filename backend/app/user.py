@@ -59,14 +59,11 @@ class User(CreateFromDict):
         phone = user_dict[User_Col_Name.phone.value]
 
         return cls(username, userid, fname, lname, email = email, phone_num = phone)
-<<<<<<< Updated upstream
-=======
     
     @property
     def full_name(self) -> str:
         """Return the user's full name."""
         return f"{self.fname} {self.lname}"
->>>>>>> Stashed changes
 
     @property
     def email(self) -> str:
