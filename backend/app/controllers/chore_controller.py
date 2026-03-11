@@ -1,26 +1,17 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import Optional
-<<<<<<< Updated upstream
-
-from app import database
-=======
 import datetime as DT
 
 from app import database
 from app.chore import Chore
->>>>>>> Stashed changes
 
 """
 Module for managing Chore Controller operations.
 Handles HTTP requests related to Chores and exposes API endpoints
 for creating, retrieving, and deleting chores.
 
-<<<<<<< Updated upstream
-Contributers: Edmund Krajewski
-=======
 Contributers: Edmund Krajewski, Gilligan Berlinski
->>>>>>> Stashed changes
 """
 
 router = APIRouter(prefix="/chores", tags=["chores"])
