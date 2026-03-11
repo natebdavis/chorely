@@ -3,20 +3,17 @@ from typing import Optional
 import os
 from dotenv import load_dotenv
 import pathlib
-from fastapi import FastAPI, Depends, HTTPException, status
 from supabase import Client, create_client
 
-from app.chore import Chore, Notification, Chore_Col_Name
-from app.user import User, User_Col_Name
-from app.misc import CreateFromDict
+from chore import Chore, Notification, Chore_Col_Name
+from user import User, User_Col_Name
+from misc import CreateFromDict
 
 
 """
 Module for managing Database operations.
 Contributers: Gilligan Berlinski, Nathaniel Davis
 """
-
-app = FastAPI()
 
 def get_client() -> Optional[Client]:
     """Creates a client to connect with the Supabase Database
@@ -103,7 +100,6 @@ def get_chores(householdid: int, client: Optional[Client] = None,
     # Fetch all data from the 'chores' table
     data = _select_all_where_equals_query("chores", Chore_Col_Name.householdid.value, householdid, client)
 
-    first = 0
     if not users:
         users = get_users(householdid, client)
 

@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from app.user import User
 from enum import Enum, auto
 import pytz
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from misc import CreateFromDict
 
@@ -17,6 +17,7 @@ Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 
 class Chore_Col_Name(Enum):
     cname = "cname"
+    choreid = "choreid"
     description = "descrip"
     request_date = "request_date"
     due_date = "due_date"
@@ -43,6 +44,7 @@ class Notification:
 class Chore(CreateFromDict):
     """Chore."""
     name: str
+    choreid: int
     description: str
     request_date: DT.datetime
     due_date: DT.datetime
@@ -50,14 +52,16 @@ class Chore(CreateFromDict):
     """User who requested the Chore."""
     notifications: Iterable[Notification]
 
-    def __init__(self, name: str, description: str, due_date: DT.datetime, requester: "User",
-             assignee: Optional["User"] = None):
+    def __init__(self, name: str, choreid: int, description: str, request_date: DT.datetime,
+                  due_date: DT.datetime, requester: "User",
+             assignee: Optional["User"] = None, status: Optional[Status] = None):
         """Constructor for Chore Class.
         Inputs: `Assignee` can be initially null or can be assigned on creation, 
         `request_date` will be auto-generated on creation if not given, `status` will be set to
         UNASSIGNED if `assignee` is null or IN-PROGRESS if a User is assigned to the chore.
         Output: `Chore` Object
         """
+        self.choreid = choreid
         self.name  = name
         self.description = description
         self.request_date = request_date if request_date else DT.datetime.now(pytz.utc)
@@ -77,6 +81,7 @@ class Chore(CreateFromDict):
         """Alternate Constructor for `Chore`
         Input: Dictionary with all values assoicated with a `Chore`"""
         name = chore_dict[Chore_Col_Name.cname.value]
+        choreid = chore_dict[Chore_Col_Name.choreid.value]
         description = chore_dict[Chore_Col_Name.description.value]
         request_date = DT.datetime.fromisoformat(chore_dict[Chore_Col_Name.request_date.value])
         due_date = DT.datetime.fromisoformat(chore_dict[Chore_Col_Name.due_date.value])
@@ -84,7 +89,7 @@ class Chore(CreateFromDict):
         assignee = chore_dict[Chore_Col_Name.assignee.value]
         status = Status[chore_dict[Chore_Col_Name.status.value]]
 
-        return cls(name, description, request_date, due_date, requester, assignee, status)
+        return cls(name, choreid, description, request_date, due_date, requester, assignee, status)
 
     @property
     def status(self) -> Status:
@@ -110,22 +115,46 @@ class Chore(CreateFromDict):
             self.status = Status.UNASSIGNED
         self._assignee = assignee
 
-    def createBaseModel()
+    def get_chore_request_model(self) -> ChoreCreateRequest:
+        assigned_to = None if not self.assignee else self.assignee.full_name
+        return ChoreCreateRequest(name=self.name,
+                                  description=self.description,
+                                  assigned_to=assigned_to)
+    
+    def get_chore_response_model(self) -> ChoreCreateRequest:
+        assigned_to = None if not self.assignee else self.assignee.full_name
+        return ChoreCreateRequest(name=self.name,
+                                  description=self.description,
+                                  assigned_to=assigned_to,
+                                  status=self.status.name)
 
+class ChoreCreateRequest(BaseModel):
+    """
+    Request body schema for creating a new Chore.
 
-'''
-Issue with Code can not have two files import each other at same time,
-maybe have database.py handle these operations instead.
+    Inputs:
+        name: Name/title of the chore.
+        description: Optional detailed description of the chore.
+        assigned_to: Optional username of the user assigned to the chore.
 
-def get_chores(user: User, chores: Iterable[Chore]) -> Set[Chore]:
-    """Get all chores that a user is assigned to"""
-    return {chore for chore in chores if chore.assignee == user}
+    Output:
+        JSON body representing the chore creation request.
+    """
+    name: str = Field(..., min_length=1, max_length=50)
+    description: str = Field(..., min_length=1, max_length=3000)
+    assigned_to: Optional[str] = None
 
-def get_notifs(user: User, chores: Iterable[Chore]) -> Set[Notification]:
-    """Get all notifications for chores that a user is assigned to"""
-    notifications: Set[Notification] = set()
-    for chore in chores:
-        if chore.assignee == user:
-            notifications.update(chore.notifications)
-    return notifications
-'''
+class ChoreResponse(BaseModel):
+    """
+    Response schema returned for Chore-related API requests.
+
+    Outputs:
+        name: Name of the chore.
+        description: Description of the chore.
+        assigned_to: Username of the user assigned to the chore.
+        status: Current status of the chore.
+    """
+    name: str
+    description: str
+    assigned_to: Optional[str]
+    status: str

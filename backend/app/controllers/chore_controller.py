@@ -1,60 +1,17 @@
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-from typing import Optional
-from enum import Enum
+
+from app.chore import Chore, ChoreCreateRequest, ChoreResponse, Status
+import app.database as DB
+from app.user import User
 
 """
 Module for managing Chore Controller operations.
 Handles HTTP requests related to Chores and exposes API endpoints
 for creating, retrieving, and deleting chores.
-Contributers: Edmund Krajewski
+Contributers: Edmund Krajewski, Gilligan Berlinski
 """
 
 router = APIRouter(prefix="/chores", tags=["chores"])
-
-
-class ChoreStatus(str, Enum):
-    """Enumeration representing the current status of a Chore."""
-    UNASSIGNED = "UNASSIGNED"
-    IN_PROGRESS = "IN_PROGRESS"
-    COMPLETE = "COMPLETE"
-    CANCELLED = "CANCELLED"
-
-
-class ChoreCreateRequest(BaseModel):
-    """
-    Request body schema for creating a new Chore.
-
-    Inputs:
-        name: Name/title of the chore.
-        description: Optional detailed description of the chore.
-        assigned_to: Optional username of the user assigned to the chore.
-
-    Output:
-        JSON body representing the chore creation request.
-    """
-    name: str = Field(..., min_length=1, max_length=50)
-    description: str = Field(..., min_length=1, max_length=3000)
-    assigned_to: Optional[str] = None
-
-
-class ChoreResponse(BaseModel):
-    """
-    Response schema returned for Chore-related API requests.
-
-    Outputs:
-        id: Unique identifier for the chore.
-        name: Name of the chore.
-        description: Description of the chore.
-        assigned_to: Username of the user assigned to the chore.
-        status: Current status of the chore.
-    """
-    id: int
-    name: str
-    description: str
-    assigned_to: Optional[str]
-    status: ChoreStatus
-
 
 """
 Temporary in-memory storage for Chores.
@@ -62,8 +19,18 @@ Temporary in-memory storage for Chores.
 This acts as a placeholder for persistent database storage
 until database integration is implemented.
 """
-fake_chores: list[ChoreResponse] = []
 next_id = 1
+fake_chores: list[ChoreResponse] = []
+householdid = 1
+
+
+"""
+Temporary in-memory storage for Chores and Users.
+
+Given a householdid pulls all users and chores currently in household
+"""
+users: list[User] = DB.get_user(householdid=householdid)
+chores: list[Chore] = DB.get_chores(householdid=householdid, users=users)
 
 
 @router.get("", response_model=list[ChoreResponse])
@@ -77,9 +44,11 @@ def get_chores():
     Outputs:
         List of all Chore objects currently in the system.
     """
-    return fake_chores
+    global chores
 
+    return [c.get_chore_response_model for c in chores]
 
+# Don't need to keep a global variable of id, database automatically assigns ids
 @router.post("", response_model=ChoreResponse, status_code=status.HTTP_201_CREATED)
 def create_chore(payload: ChoreCreateRequest):
     """
@@ -99,7 +68,7 @@ def create_chore(payload: ChoreCreateRequest):
         name=payload.name,
         description=payload.description,
         assigned_to=payload.assigned_to,
-        status=ChoreStatus.IN_PROGRESS if payload.assigned_to else ChoreStatus.UNASSIGNED,
+        status=Status.IN_PROGRESS.name if payload.assigned_to else Status.UNASSIGNED.name,
     )
 
     fake_chores.append(new_chore)
@@ -121,11 +90,12 @@ def delete_chore(chore_id: int):
     Raises:
         HTTPException(404) if the chore ID does not exist.
     """
-    global fake_chores
+    global chores
 
-    for i, chore in enumerate(fake_chores):
-        if chore.id == chore_id:
-            fake_chores.pop(i)
+    for i, c in enumerate(chores):
+        if c.choreid == chore_id:
+            chores.pop(i)
+            # Need to add section where database is updated during this action
             return
 
     raise HTTPException(status_code=404, detail="Chore not found")

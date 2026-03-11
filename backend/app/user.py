@@ -1,9 +1,10 @@
+from enum import Enum
 from typing import Optional
 import re
 from collections.abc import Iterable
 from typing import Set
 
-from app.chore import Chore, Notification
+from misc import CreateFromDict
 
 
 """
@@ -58,6 +59,10 @@ class User(CreateFromDict):
         phone = user_dict[User_Col_Name.phone.value]
 
         return cls(username, userid, fname, lname, email = email, phone_num = phone)
+    
+    @property
+    def full_name(self) -> str:
+        return "{fname} {lname}".format(self.fname, self.lname)
 
     @property
     def email(self) -> str:
