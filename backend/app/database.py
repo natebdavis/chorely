@@ -150,25 +150,87 @@ def fetch(users: Iterable[User], chores: Iterable[Chore]):
     """get changes from server"""
     pass
 
-def add_user(household: int, user: User):
-    """add user to database"""
-    pass
+def add_user(household: int, user: User, client: Optional[Client] = None):
+    """Add user to database"""
+
+    if client is None:
+        client = get_client()
+
+    data = {
+        User_Col_Name.householdid.value: household,
+        User_Col_Name.username.value: user.username,
+        User_Col_Name.fname.value: user.fname,
+        User_Col_Name.lname.value: user.lname
+    }
+
+    response = client.table("users").insert(data).execute()
+
+    return response.data
 
 def remove_user(household: int, user: User):
     """remove user from database"""
     pass
 
-def add_chore(household: int, chore: Chore):
-    """add chore to database"""
-    pass
+def add_chore(household: int, chore: Chore, client: Optional[Client] = None):
+    """Add chore to database"""
 
-def remove_chore(household: int, chore: Chore):
-    """remove chore from database"""
-    pass
+    if client is None:
+        client = get_client()
 
-def update_chore(household: int, chore: Chore):
-    """change chore data in database"""
-    pass
+    data = {
+        Chore_Col_Name.householdid.value: household,
+        Chore_Col_Name.cname.value: chore.name,
+        Chore_Col_Name.description.value: chore.description,
+        Chore_Col_Name.requester.value: chore.requester.userid,
+        Chore_Col_Name.assignee.value: chore.assignee.userid if chore.assignee else None,
+        Chore_Col_Name.status.value: chore.status.name,
+        Chore_Col_Name.request_date.value: chore.request_date.isoformat(),
+        Chore_Col_Name.due_date.value: chore.due_date.isoformat()
+    }
+
+    response = client.table("chores").insert(data).execute()
+
+    return response.data
+
+def remove_chore(household: int, chore: Chore, client: Optional[Client] = None):
+    """Remove chore from database"""
+
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table("chores")
+        .delete()
+        .eq(Chore_Col_Name.householdid.value, household)
+        .eq(Chore_Col_Name.cname.value, chore.name)
+        .execute()
+    )
+
+    return response.data
+
+def update_chore(household: int, chore: Chore, client: Optional[Client] = None):
+    """Update chore data in database"""
+
+    if client is None:
+        client = get_client()
+
+    data = {
+        Chore_Col_Name.assignee.value: chore.assignee.userid if chore.assignee else None,
+        Chore_Col_Name.status.value: chore.status.name,
+        Chore_Col_Name.due_date.value: chore.due_date.isoformat()
+    }
+
+    response = (
+        client
+        .table("chores")
+        .update(data)
+        .eq(Chore_Col_Name.householdid.value, household)
+        .eq(Chore_Col_Name.cname.value, chore.name)
+        .execute()
+    )
+
+    return response.data
 
 def add_notification(household: int, chore: Chore, notification: Notification):
     """add notification to database"""
