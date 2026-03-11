@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 import pathlib
 from supabase import Client, create_client
 
-from chore import Chore, Notification, Chore_Col_Name
-from user import User, User_Col_Name
-from misc import CreateFromDict
+from app.chore import Chore, Notification, Chore_Col_Name
+from app.user import User, User_Col_Name
+from app.misc import CreateFromDict
 
 
 """
@@ -26,16 +26,19 @@ def get_client() -> Optional[Client]:
     #Get .env variables for database connection
     supabase_url = os.getenv("SUPABASE_URL")
     secret_key = os.getenv("SECRET_KEY")
+    service_key = os.getenv("SERVICE_KEY")
 
     if supabase_url is None:
         raise ValueError("SUPABASE_URL not found in .env")
     if secret_key is None:
         raise ValueError("SECRET_KEY not found in .env")
+    if service_key is None:
+        raise ValueError("SERVICE_KEY not found in .env")
     
     client = None
 
     try:
-        client = create_client(supabase_url, secret_key)
+        client = create_client(supabase_url, service_key)
     except Exception as e:
         raise
 

@@ -4,7 +4,7 @@ import re
 from collections.abc import Iterable
 from typing import Set
 
-from misc import CreateFromDict
+from app.misc import CreateFromDict
 
 
 """

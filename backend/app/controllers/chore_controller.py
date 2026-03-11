@@ -29,7 +29,7 @@ Temporary in-memory storage for Chores and Users.
 
 Given a householdid pulls all users and chores currently in household
 """
-users: list[User] = DB.get_user(householdid=householdid)
+users: list[User] = DB.get_users(householdid=householdid)
 chores: list[Chore] = DB.get_chores(householdid=householdid, users=users)
 
 

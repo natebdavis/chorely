@@ -8,7 +8,7 @@ from enum import Enum, auto
 import pytz
 from pydantic import BaseModel, Field
 
-from misc import CreateFromDict
+from app.misc import CreateFromDict
 
 """
 Module for managing Chore operations.
@@ -40,6 +40,37 @@ class Notification:
     def __init__(self, time: DT.datetime):
         """Constructor for Notification"""
         self.time = time
+
+class ChoreCreateRequest(BaseModel):
+    """
+    Request body schema for creating a new Chore.
+
+    Inputs:
+        name: Name/title of the chore.
+        description: Optional detailed description of the chore.
+        assigned_to: Optional username of the user assigned to the chore.
+
+    Output:
+        JSON body representing the chore creation request.
+    """
+    name: str = Field(..., min_length=1, max_length=50)
+    description: str = Field(..., min_length=1, max_length=3000)
+    assigned_to: Optional[str] = None
+
+class ChoreResponse(BaseModel):
+    """
+    Response schema returned for Chore-related API requests.
+
+    Outputs:
+        name: Name of the chore.
+        description: Description of the chore.
+        assigned_to: Username of the user assigned to the chore.
+        status: Current status of the chore.
+    """
+    name: str
+    description: str
+    assigned_to: Optional[str]
+    status: str
 
 class Chore(CreateFromDict):
     """Chore."""
@@ -127,34 +158,3 @@ class Chore(CreateFromDict):
                                   description=self.description,
                                   assigned_to=assigned_to,
                                   status=self.status.name)
-
-class ChoreCreateRequest(BaseModel):
-    """
-    Request body schema for creating a new Chore.
-
-    Inputs:
-        name: Name/title of the chore.
-        description: Optional detailed description of the chore.
-        assigned_to: Optional username of the user assigned to the chore.
-
-    Output:
-        JSON body representing the chore creation request.
-    """
-    name: str = Field(..., min_length=1, max_length=50)
-    description: str = Field(..., min_length=1, max_length=3000)
-    assigned_to: Optional[str] = None
-
-class ChoreResponse(BaseModel):
-    """
-    Response schema returned for Chore-related API requests.
-
-    Outputs:
-        name: Name of the chore.
-        description: Description of the chore.
-        assigned_to: Username of the user assigned to the chore.
-        status: Current status of the chore.
-    """
-    name: str
-    description: str
-    assigned_to: Optional[str]
-    status: str
