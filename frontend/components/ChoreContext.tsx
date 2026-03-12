@@ -24,23 +24,6 @@ const ChoreContext = createContext<ChoreContextValue | undefined>(undefined);
 export function ChoreProvider({ children }: { children: ReactNode }) {
   const [chores, setChores] = useState<Chore[]>([]);
 
-  const API_URL = "https://chorely.onrender.com/chores"; // change to your FastAPI IP
-
-  // fetch chores from FastAPI when app loads
-  useEffect(() => {
-    const fetchChores = async () => {
-      try {
-        const response = await fetch(API_URL);
-        const data = await response.json();
-        setChores(data);
-      } catch (error) {
-        console.error("Failed to fetch chores:", error);
-      }
-    };
-
-    fetchChores();
-  }, []);
-
   const addChore = (name: string, description: string, assignedTo: string) => {
     setChores((currentChores) => [
       {
