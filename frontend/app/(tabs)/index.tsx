@@ -1,16 +1,81 @@
 import {
   ImageBackground,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useEffect, useState } from "react";
 
 import { ChoreItem } from "../../components/ChoreItem";
-import { useChores } from "../../components/ChoreContext";
+import type { Chore } from "../../components/ChoreContext";
+
+type BackendChore = {
+  choreid: number | null;
+  name: string;
+  description: string;
+  request_date: number | null;
+  due_date: number | null;
+  assignee: string | null;
+  status: string | null;
+};
+
+const API_BASE =
+  Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
+
+function formatUnixTimestamp(timestamp: number | null) {
+  if (!timestamp) {
+    return "Unknown";
+  }
+
+  return new Date(timestamp * 1000).toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 export default function ChoreBoard() {
-  const { chores, deleteChore } = useChores();
+  const [chores, setChores] = useState<Chore[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadChores() {
+      try {
+        const response = await fetch(`${API_BASE}/chores/1`);
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const data: BackendChore[] = await response.json();
+        setChores(
+          data.map((backendChore) => ({
+            id: String(
+              backendChore.choreid ??
+                `${backendChore.name}-${backendChore.due_date ?? "demo"}`
+            ),
+            name: backendChore.name,
+            description: backendChore.description,
+            assignedTo: backendChore.assignee ?? "Unassigned",
+            requestDate: formatUnixTimestamp(backendChore.request_date),
+            dueDate: formatUnixTimestamp(backendChore.due_date),
+            status: backendChore.status ?? "Unknown",
+          }))
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadChores();
+  }, []);
 
   return (
     <ImageBackground
@@ -21,12 +86,23 @@ export default function ChoreBoard() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Chore Board</Text>
 
-        {chores.length === 0 ? (
+        {loading ? (
           <View style={styles.emptyState}>
-            {/* This shows when there are no chores on the board yet */}
-            <Text style={styles.emptyTitle}>No chores yet</Text>
+            <Text style={styles.emptyTitle}>Loading chore...</Text>
             <Text style={styles.emptyText}>
-              Tap the add button below to create your first chore.
+              Trying to load one chore from the backend.
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Backend request failed</Text>
+            <Text style={styles.emptyText}>{error}</Text>
+          </View>
+        ) : chores.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No backend chores found</Text>
+            <Text style={styles.emptyText}>
+              `GET /chores/1` returned an empty list.
             </Text>
           </View>
         ) : (
@@ -34,8 +110,7 @@ export default function ChoreBoard() {
             <ChoreItem
               key={chore.id}
               chore={chore}
-              // this checks off the chore and removes it from the board
-              onComplete={() => deleteChore(chore.id)}
+              onComplete={() => {}}
             />
           ))
         )}

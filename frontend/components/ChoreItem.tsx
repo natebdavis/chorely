@@ -15,6 +15,9 @@ export function ChoreItem({ chore, onComplete }: ChoreItemProps) {
         <Text style={styles.title}>{chore.name}</Text>
         {/* This displays the name of the person assigned to the chore */}
         <Text style={styles.assignee}>Assigned to: {chore.assignedTo}</Text>
+        <Text style={styles.meta}>Request date: {chore.requestDate ?? "Unknown"}</Text>
+        <Text style={styles.meta}>Due date: {chore.dueDate ?? "Unknown"}</Text>
+        <Text style={styles.meta}>Status: {chore.status ?? "Unknown"}</Text>
         {/* This displays the chore description */}
         <Text style={styles.description}>{chore.description}</Text>
       </View>
@@ -60,6 +63,11 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     fontWeight: "600",
     marginBottom: 8,
+  },
+  meta: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginBottom: 6,
   },
   actions: {
     alignItems: "flex-end",

@@ -11,6 +11,9 @@ export type Chore = {
   name: string;
   description: string;
   assignedTo: string;
+  requestDate?: string;
+  dueDate?: string;
+  status?: string;
 };
 
 type ChoreContextValue = {
@@ -31,6 +34,9 @@ export function ChoreProvider({ children }: { children: ReactNode }) {
         name: name.trim(),
         description: description.trim(),
         assignedTo: assignedTo.trim(),
+        requestDate: "Not set",
+        dueDate: "Not set",
+        status: "UNASSIGNED",
       },
       ...currentChores,
     ]);
