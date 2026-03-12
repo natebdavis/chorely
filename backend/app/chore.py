@@ -1,19 +1,22 @@
 from collections.abc import Iterable
 import datetime as DT
 from typing import Optional, TYPE_CHECKING
-if TYPE_CHECKING:
-    from app.user import User
 from enum import Enum, auto
 import pytz
 
 from app.misc import CreateFromDict
+
+if TYPE_CHECKING:
+    from app.user import User
 
 """
 Module for managing Chore operations.
 Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
 
+
 class Chore_Col_Name(Enum):
+    choreid = "choreid"
     cname = "cname"
     description = "descrip"
     request_date = "request_date"
@@ -37,47 +40,13 @@ class Notification:
     time: DT.datetime
 
     def __init__(self, time: DT.datetime):
+        """Constructor for Notification"""
         self.time = time
 
-class ChoreCreateRequest(BaseModel):
-    """
-    Request body schema for creating a new Chore.
-
-    Inputs:
-        name: Name/title of the chore.
-        description: Optional detailed description of the chore.
-        assigned_to: Optional username of the user assigned to the chore.
-
-    Output:
-        JSON body representing the chore creation request.
-    """
-    name: str = Field(..., min_length=1, max_length=50)
-    description: str = Field(..., min_length=1, max_length=3000)
-    assigned_to: Optional[str] = None
-
-class ChoreResponse(BaseModel):
-    """
-    Response schema returned for Chore-related API requests.
-
-    Outputs:
-        choreid: Unique identifier of the Chore.
-        name: Name of the Chore.
-        description: Description of the Chore.
-        request_date: Unix timestamp representing when the Chore was requested.
-        due_date: Unix timestamp representing when the Chore is due.
-        assignee: Full name of the assignee, or null if unassigned.
-        status: Current status of the Chore.
-    """
-    choreid: Optional[int] = None
-    name: str
-    description: str
-    request_date: Optional[int] = None
-    due_date: Optional[int] = None
-    assignee: Optional[str]
-    status: str
 
 class Chore(CreateFromDict):
     """Chore."""
+    choreid: Optional[int]
     name: str
     description: str
     request_date: DT.datetime
@@ -85,24 +54,30 @@ class Chore(CreateFromDict):
     requester: "User"
     notifications: Iterable[Notification]
 
-    # def __init__(self, name: str, choreid: int, description: str, request_date: DT.datetime,
-    #               due_date: DT.datetime, requester: "User",
-    #          assignee: Optional["User"] = None, status: Optional[Status] = None):
-
-    def __init__(self, name: str, description: str, due_date: DT.datetime, requester: "User", choreid: Optional[int] = None, assignee: Optional["User"] = None,
-                 request_date: Optional[DT.datetime] = None, status: Optional[Status] = None):
-        """Constructor for Chore Class.
-        Inputs: `Assignee` can be initially null or can be assigned on creation, 
-        `request_date` will be auto-generated on creation if not given, `status` will be set to
-        UNASSIGNED if `assignee` is null or IN-PROGRESS if a User is assigned to the chore.
-        Output: `Chore` Object
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        due_date: DT.datetime,
+        requester: "User",
+        choreid: Optional[int] = None,
+        assignee: Optional["User"] = None,
+        request_date: Optional[DT.datetime] = None,
+        status: Optional[Status] = None
+    ):
         """
         Constructor for Chore Class.
-        assignee can be null or assigned on creation.
-        request_date auto-generates if not given.
-        status becomes UNASSIGNED if assignee is null, otherwise IN_PROGRESS,
-        unless explicitly provided.
-        
+
+        Inputs:
+            assignee can be initially null or assigned on creation.
+            request_date will be auto-generated on creation if not given.
+            status will be set to UNASSIGNED if assignee is null or
+            IN_PROGRESS if a User is assigned to the chore unless explicitly given.
+
+        Output:
+            Chore object
+        """
+        self.choreid = choreid
         self.name = name
         self.description = description
         self.request_date = request_date if request_date else DT.datetime.now(pytz.utc)
@@ -110,8 +85,7 @@ class Chore(CreateFromDict):
         self.requester = requester
         self._assignee = assignee
 
-
-        if status:
+        if status is not None:
             self._status = status
         else:
             self._status = Status.IN_PROGRESS if self._assignee else Status.UNASSIGNED
@@ -122,16 +96,28 @@ class Chore(CreateFromDict):
     def from_dict(cls, chore_dict: dict):
         """Alternate constructor for Chore from a dictionary."""
         name = chore_dict[Chore_Col_Name.cname.value]
+        choreid = chore_dict[Chore_Col_Name.choreid.value]
         description = chore_dict[Chore_Col_Name.description.value]
-        request_date = DT.datetime.fromisoformat(chore_dict[Chore_Col_Name.request_date.value])
-        due_date = DT.datetime.fromisoformat(chore_dict[Chore_Col_Name.due_date.value])
+        request_date = DT.datetime.fromisoformat(
+            chore_dict[Chore_Col_Name.request_date.value]
+        )
+        due_date = DT.datetime.fromisoformat(
+            chore_dict[Chore_Col_Name.due_date.value]
+        )
         requester = chore_dict[Chore_Col_Name.requester.value]
         assignee = chore_dict[Chore_Col_Name.assignee.value]
         status = Status[chore_dict[Chore_Col_Name.status.value]]
 
-
-        # return cls(name, choreid, description, request_date, due_date, requester, assignee, status)
-        return cls(name=name, description=description, due_date=due_date, requester=requester, choreid=choreid, assignee=assignee, request_date=request_date, status=status)
+        return cls(
+            name=name,
+            description=description,
+            due_date=due_date,
+            requester=requester,
+            choreid=choreid,
+            assignee=assignee,
+            request_date=request_date,
+            status=status
+        )
 
     @property
     def status(self) -> Status:
@@ -157,24 +143,6 @@ class Chore(CreateFromDict):
         elif self._assignee and not assignee:
             self.status = Status.UNASSIGNED
         self._assignee = assignee
-
-    def get_chore_request_model(self) -> ChoreCreateRequest:
-        assigned_to = None if not self.assignee else self.assignee.full_name
-        return ChoreCreateRequest(name=self.name,
-                                  description=self.description,
-                                  assigned_to=assigned_to)
-    
-    # def get_chore_response_model(self) -> ChoreResponse:
-    #     """
-    #     Create a ChoreResponse object suitable for API responses.
-    #     """
-    #     assigned_to = None if not self.assignee else f"{self.assignee.fname} {self.assignee.lname}"
-    #     return ChoreResponse(
-    #         name=self.name,
-    #         description=self.description,
-    #         assigned_to=assigned_to,
-    #         status=self.status.name
-    #     )
 
     def createBaseModel(self) -> dict:
         """

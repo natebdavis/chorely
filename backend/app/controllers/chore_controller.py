@@ -46,7 +46,7 @@ class ChoreDeleteRequest(BaseModel):
 
     Inputs:
         householdid: Unique identifier for the Household.
-        name: Name of the Chore to delete.
+        choreid: Unique identifier of the Chore to delete.
 
     Output:
         JSON body representing a Chore deletion request.
@@ -60,6 +60,7 @@ class ChoreResponse(BaseModel):
     Response schema returned for Chore-related API requests.
 
     Outputs:
+        choreid: Unique identifier of the Chore.
         name: Name of the Chore.
         description: Description of the Chore.
         request_date: Unix timestamp representing when the Chore was requested.
@@ -87,7 +88,6 @@ def get_household_chores(householdid: int):
         if not chores:
             return []
 
-        # return [c.get_chore_response_model() for c in chores]
         return [ChoreResponse(**c.createBaseModel()) for c in chores]
 
     except Exception as e:
@@ -138,7 +138,15 @@ def create_chore(payload: ChoreCreateRequest):
                 detail="Invalid due_date format. Use ISO format, e.g. 2026-03-20T18:00:00"
             )
 
-        chore = Chore(name=payload.name, description=payload.description, due_date=due_date, requester=requester, choreid=None, assignee=assignee, request_date=None)
+        chore = Chore(
+            name=payload.name,
+            description=payload.description,
+            due_date=due_date,
+            requester=requester,
+            choreid=None,
+            assignee=assignee,
+            request_date=None,
+        )
 
         database.add_chore(payload.householdid, chore)
 
@@ -156,10 +164,10 @@ def create_chore(payload: ChoreCreateRequest):
 @router.delete("", status_code=status.HTTP_200_OK)
 def delete_chore(payload: ChoreDeleteRequest):
     """
-    Delete a chore by household ID and chore id.
+    Delete a chore by household ID and chore ID.
 
     Inputs:
-        payload: ChoreDeleteRequest containing the household ID and chore id.
+        payload: ChoreDeleteRequest containing the household ID and chore ID.
 
     Outputs:
         Success message if the chore is deleted.
