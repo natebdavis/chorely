@@ -2,8 +2,9 @@ from typing import Optional
 import re
 from collections.abc import Iterable
 from typing import Set
-
+from enum import Enum, auto
 from app.chore import Chore, Notification
+from app.misc import CreateFromDict
 
 
 """
@@ -58,6 +59,11 @@ class User(CreateFromDict):
         phone = user_dict[User_Col_Name.phone.value]
 
         return cls(username, userid, fname, lname, email = email, phone_num = phone)
+    
+    @property
+    def full_name(self) -> str:
+        """Return the user's full name."""
+        return f"{self.fname} {self.lname}"
 
     @property
     def email(self) -> str:
