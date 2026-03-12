@@ -3,6 +3,7 @@ import {
   ReactNode,
   useContext,
   useState,
+  useEffect,
 } from "react";
 
 export type Chore = {
@@ -23,8 +24,24 @@ const ChoreContext = createContext<ChoreContextValue | undefined>(undefined);
 export function ChoreProvider({ children }: { children: ReactNode }) {
   const [chores, setChores] = useState<Chore[]>([]);
 
+  const API_URL = "https://chorely.onrender.com/chores"; // change to your FastAPI IP
+
+  // fetch chores from FastAPI when app loads
+  useEffect(() => {
+    const fetchChores = async () => {
+      try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        setChores(data);
+      } catch (error) {
+        console.error("Failed to fetch chores:", error);
+      }
+    };
+
+    fetchChores();
+  }, []);
+
   const addChore = (name: string, description: string, assignedTo: string) => {
-    // this adds a new chore to the top of the chore board
     setChores((currentChores) => [
       {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -37,16 +54,13 @@ export function ChoreProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteChore = (id: string) => {
-    // this removes a chore after it has been checked off
     setChores((currentChores) =>
       currentChores.filter((chore) => chore.id !== id)
     );
   };
 
   return (
-    <ChoreContext.Provider
-      value={{ chores, addChore, deleteChore }}
-    >
+    <ChoreContext.Provider value={{ chores, addChore, deleteChore }}>
       {children}
     </ChoreContext.Provider>
   );

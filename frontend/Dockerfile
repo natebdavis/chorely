@@ -20,7 +20,7 @@ RUN npm install
 COPY . /app
 
 # Expose default Expo ports
-EXPOSE 19000 19001 19002
+EXPOSE 19000 19001 19002 19006 8081
 
 # Start Expo in LAN mode (reliable in Docker)
-CMD ["npx", "expo", "start", "--lan"]
+CMD ["npx", "expo", "start"]

@@ -24,7 +24,7 @@ def get_client() -> Optional[Client]:
             `Exception` if there is any errors creating the client."""
 
     # Load environment variables from .env file in root folder
-    load_dotenv(dotenv_path=pathlib.Path(__file__).resolve().parent.parent.parent / '.env')
+    load_dotenv(dotenv_path=pathlib.Path(__file__).resolve().parent.parent / '.env')
 
     #Get .env variables for database connection
     supabase_url = os.getenv("SUPABASE_URL")
