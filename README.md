@@ -13,7 +13,7 @@ Run the Expo frontend and FastAPI backend in one command.
 
 ## 2. Set Environment Variables
 
-- Copy the `.env` file into the project's root folder.
+- Copy the `.env` file into the project's root and backend folder.
 
 ## 3. Start the Project
 
