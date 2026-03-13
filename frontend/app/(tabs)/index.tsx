@@ -22,7 +22,7 @@ type BackendChore = {
 };
 
 const API_BASE =
-  Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
+  Platform.OS === "android" ? "https://chorely.onrender.com" : "https://chorely.onrender.com";
 
 function formatUnixTimestamp(timestamp: number | null) {
   if (!timestamp) {
