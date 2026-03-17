@@ -6,7 +6,7 @@ import pathlib
 from fastapi import FastAPI, Depends, HTTPException, status
 from supabase import Client, create_client
 
-from app.chore import Chore, Notification, Chore_Col_Name
+from app.chore import Chore, Notification, Chore_Col_Name, Status
 from app.user import User, User_Col_Name
 from app.misc import CreateFromDict
 
@@ -170,9 +170,26 @@ def add_user(household: int, user: User, client: Optional[Client] = None):
 
     return response.data
 
-def remove_user(household: int, user: User):
-    """remove user from database"""
-    pass
+def remove_user(user: User, client: Optional[Client] = None) -> bool:
+
+    """Removes user from database if user exists. Also removes all notifications associated with the user and sets
+    all chores assigned to or requested by the user to null. 
+    Output: Returns True if user was removed, False if user did not exist in database."""
+
+    if client is None:
+        client = get_client()
+
+    user_in_table = client.table("users").select("*").eq(User_Col_Name.userid.value, user.userid).maybe_single().execute()
+
+    if not user_in_table.data:
+        return False
+    
+    client.table("notifications").delete().eq("userid", user.userid).execute()
+    client.table("chores").update({Chore_Col_Name.assignee.value: None}).eq(Chore_Col_Name.assignee.value, user.userid).execute()
+    client.table("chores").update({Chore_Col_Name.requester.value: None}).eq(Chore_Col_Name.requester.value, user.userid).execute()
+    client.table("users").delete().eq(User_Col_Name.userid.value, user.userid).execute()
+
+    return True
 
 def add_chore(household: int, chore: Chore, client: Optional[Client] = None):
     """
@@ -265,6 +282,59 @@ def update_chore(household: int, chore: Chore, client: Optional[Client] = None):
     )
 
     return response.data
+
+def get_all_requested_chores(userid: int, client: Optional[Client] = None) -> Optional[Iterable[Chore]]:
+    """Given a userid, return all chores that are requested by the user.
+    Output: A iterable of `chores` that are requested by the user."""
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table("chores")
+        .select("*")
+        .eq(Chore_Col_Name.requester.value, userid)
+        .execute()
+    )
+
+    return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
+
+def get_all_in_progress_assigned_chores(userid: int, client: Optional[Client] = None) -> Optional[Iterable[Chore]]:
+    """Given a userid, return all chores that are assigned to the user and that are in progress.
+    Output: A iterable of `chores` that are assigned to the user and in progress."""
+
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table("chores")
+        .select("*")
+        .eq(Chore_Col_Name.assignee.value, userid)
+        .eq(Chore_Col_Name.status.value, Status.IN_PROGRESS.name)
+        .execute()
+    )
+
+    return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
+
+def get_all_completed_chores(userid: int, client: Optional[Client] = None) -> Optional[Iterable[Chore]]:
+    """Given a userid, return all chores that are assigned to the user and that are completed.
+    Output: A iterable of `chores` that are assigned to the user and completed."""
+
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table("chores")
+        .select("*")
+        .eq(Chore_Col_Name.assignee.value, userid)
+        .eq(Chore_Col_Name.status.value, Status.COMPLETE.name)
+        .execute()
+    )
+
+    return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
+
 
 def add_notification(household: int, chore: Chore, notification: Notification):
     """add notification to database"""
