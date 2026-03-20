@@ -3,12 +3,14 @@ from typing import Optional
 import os
 from dotenv import load_dotenv
 import pathlib
-from fastapi import FastAPI, Depends, HTTPException, status
 from supabase import Client, create_client
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 
 from app.chore import Chore, Notification, Chore_Col_Name, Status
 from app.user import User, User_Col_Name
-from app.misc import CreateFromDict
+from backend.app.utils import CreateFromDict, load_env_variables, verify_password, TokenData
 
 
 """
@@ -16,36 +18,31 @@ Module for managing Database operations.
 Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
 
-app = FastAPI()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
-def get_client() -> Optional[Client]:
+def get_client():
     """Creates a client to connect with the Supabase Database
     Raises: `ValueError` if there is a problem accessing variables from .env
             `Exception` if there is any errors creating the client."""
 
-    # Load environment variables from .env file in root folder
-    load_dotenv(dotenv_path=pathlib.Path(__file__).resolve().parent.parent / '.env')
-
     #Get .env variables for database connection
-    supabase_url = os.getenv("SUPABASE_URL")
-    secret_key = os.getenv("SECRET_KEY")
-    service_key = os.getenv("SERVICE_KEY")
+    env = load_env_variables()
+    supabase_url = env["SUPABASE_URL"]
+    service_key = env["SERVICE_KEY"]
 
     if supabase_url is None:
         raise ValueError("SUPABASE_URL not found in .env")
-    if secret_key is None:
-        raise ValueError("SECRET_KEY not found in .env")
     if service_key is None:
         raise ValueError("SERVICE_KEY not found in .env")
     
-    client = None
+    client = create_client(supabase_url, service_key)
 
     try:
-        client = create_client(supabase_url, service_key)
+        yield client
     except Exception as e:
-        raise
-
-    return client
+        raise e
+    finally:
+        client.auth.sign_out()
 
 def _get_data_type_list_from_response(data: Optional[Iterable[dict]], 
                                  data_type: CreateFromDict) -> Optional[Iterable[CreateFromDict]]:
@@ -72,6 +69,52 @@ def _select_all_where_equals_query(table_name: str, col_name: str, value,
     response = client.table(table_name).select("*").eq(col_name, value).execute()
 
     return response.data
+
+def get_user_by_username(username: str, client: Optional[Client] = None) -> Optional[User]:
+    """Get a single `user` given a username.
+    Output: A `User` Object created using the first entry matching the username"""
+
+    first = 0
+    user_data = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
+    if user_data[first]:
+        return User.from_dict(user_data[first])
+    else:
+        return None
+    
+def authenticate_user(username: str, password: str, client: Optional[Client] = None) -> Optional[User]:
+    """Authenticate a user given a username and password.
+    Output: A `User` Object if the username and password match, `False` otherwise."""
+    user = get_user_by_username(username, client)
+    if not user:
+        return False
+    if not verify_password(password, user.passhash):
+        return False
+    return user
+
+def get_current_user(client: Client = Depends(get_client), token: str = Depends(oauth2_scheme)):
+    """Get the current user given a JWT token.
+    Output: A `User` Object if the token is valid, raises an HTTPException otherwise."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    env = load_env_variables()
+    secret_key = env["SECRET_KEY"]
+    algorithm = env["ALGORITHM"]
+
+    try:
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+        username: str = payload.get("sub")
+        TokenData(username=username)
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = get_user_by_username(username=TokenData.username, client=client)
+    if user is None:
+        raise credentials_exception
+    return user
 
 def get_user(userid: int, client: Optional[Client] = None) -> Optional[User]:
     """Get a single `user` given a userid.
@@ -106,7 +149,6 @@ def get_chores(householdid: int, client: Optional[Client] = None,
     # Fetch all data from the 'chores' table
     data = _select_all_where_equals_query("chores", Chore_Col_Name.householdid.value, householdid, client)
 
-    first = 0
     if not users:
         users = get_users(householdid, client)
 

@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from typing import Set
 from enum import Enum, auto
 from app.chore import Chore, Notification
-from app.misc import CreateFromDict
+from backend.app.utils import CreateFromDict
 
 
 """
@@ -33,7 +33,7 @@ class User(CreateFromDict):
     _EMAIL_REGULAR_EXPRESSION = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}"
     """Regular expression for validating email."""
 
-    def __init__(self, username: str, userid: int, fname: str, lname: str, email: str, 
+    def __init__(self, username: str, passhash: str, userid: int, fname: str, lname: str, email: str, 
                  phone_num: Optional[int] = None):
         """Constructor for User Class.
         Inputs: `email` will be checked if it is a valid email, if not then it is set to null.
@@ -41,6 +41,7 @@ class User(CreateFromDict):
         Output: `User` Object
         """
         self.username = username
+        self.passhash = passhash
         self.userid = userid
         self.fname = fname
         self.lname = lname
@@ -52,13 +53,14 @@ class User(CreateFromDict):
         """Alternate Constructor for `User`
         Input: Dictionary with all values assoicated with a `User`"""
         username = user_dict[User_Col_Name.username.value]
+        passhash = user_dict[User_Col_Name.passhash.value]
         userid = user_dict[User_Col_Name.userid.value]
         fname = user_dict[User_Col_Name.fname.value]
         lname = user_dict[User_Col_Name.lname.value]
         email = user_dict[User_Col_Name.email.value]
         phone = user_dict[User_Col_Name.phone.value]
 
-        return cls(username, userid, fname, lname, email = email, phone_num = phone)
+        return cls(username, passhash, userid, fname, lname, email = email, phone_num = phone)
     
     @property
     def full_name(self) -> str:
