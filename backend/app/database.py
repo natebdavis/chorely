@@ -187,14 +187,6 @@ def get_chores(householdid: int, client: Optional[Client] = None,
     # The data is in data
     return _get_data_type_list_from_response(data, Chore)
 
-def check_updates(users: Iterable[User], chores: Iterable[Chore]) -> bool:
-    """check if server database is different from user database"""
-    pass
-
-def fetch(users: Iterable[User], chores: Iterable[Chore]):
-    """get changes from server"""
-    pass
-
 def add_user(household: int, user: User, client: Optional[Client] = None):
     """Add user to database"""
 
