@@ -137,6 +137,7 @@ def create_user(request: UserCreateRequest):
 
     user = User(
         username=request.username,
+        passhash=request.passhash,
         userid=0,  # placeholder until database assigns ID
         fname=request.fname,
         lname=request.lname,
