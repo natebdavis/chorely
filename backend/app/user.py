@@ -87,3 +87,14 @@ class User(CreateFromDict):
          Output: `True` if email is valid, `False` if otherwise."""
          valid_email = re.match(self._EMAIL_REGULAR_EXPRESSION, email)
          return True if valid_email else False
+    
+    def createResponseModel(self) -> dict:
+        """Create a `UserResponse` model from the `User` object."""
+        return {
+            "username": self.username,
+            "fname": self.fname,
+            "lname": self.lname,
+            "email": self.email,
+            "phone_num": self.phone_num
+        }
+        

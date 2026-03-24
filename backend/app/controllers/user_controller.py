@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
+from supabase import Client
 
-from app.database import get_users, get_user, add_user
+from app.database import get_users, get_user, add_user, get_client, get_user_by_username
 from app.user import User
+from backend.app.utils import get_password_hash
 
 """
 Module for managing User Controller operations.
@@ -38,6 +40,7 @@ class UserCreateRequest(BaseModel):
     email: str
     phone_num: Optional[int] = None
     householdid: int
+    password: str
 
 
 class UserResponse(BaseModel):
@@ -144,3 +147,25 @@ def create_user(request: UserCreateRequest):
     add_user(request.householdid, user)
 
     return {"message": "User created successfully"}
+
+@router.post("/signup", response_model=UserResponse)
+def signup(user: UserCreateRequest, client: Client = Depends(get_client)):
+    client_user = get_user_by_username(client=client, username=user.username)
+    if client_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    hashed_password = get_password_hash(user.password)
+    client_user = User(
+        username=user.username,
+        fname=user.fname,
+        lname=user.lname,
+        email=user.email,
+        phone_num=user.phone_num,
+        householdid=user.householdid,
+        passhash=hashed_password,
+        userid=0)  # placeholder until database assigns ID
+
+    # insert function from database module to insert user into database
+    # get userid from database and update client_user.userid with the new value
+    # return user object, or base model of user object or a boolean indicating success of the operation, haven't decided yet
+
+    pass
