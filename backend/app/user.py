@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from typing import Set
 from enum import Enum, auto
 from app.chore import Chore, Notification
-from backend.app.utils import CreateFromDict
+from app.utils import CreateFromDict
 
 
 """

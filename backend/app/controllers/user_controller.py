@@ -5,7 +5,7 @@ from supabase import Client
 
 from app.database import get_users, get_user, add_user, get_client, get_user_by_username
 from app.user import User
-from backend.app.utils import get_password_hash
+from app.utils import get_password_hash
 
 """
 Module for managing User Controller operations.

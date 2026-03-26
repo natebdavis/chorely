@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING
 from enum import Enum, auto
 import pytz
 
-from backend.app.utils import CreateFromDict
+from app.utils import CreateFromDict
 
 if TYPE_CHECKING:
     from app.user import User

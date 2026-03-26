@@ -10,7 +10,7 @@ from jose import JWTError, jwt
 
 from app.chore import Chore, Notification, Chore_Col_Name, Status
 from app.user import User, User_Col_Name
-from backend.app.utils import CreateFromDict, load_env_variables, verify_password, TokenData
+from app.utils import CreateFromDict, load_env_variables, verify_password, TokenData
 
 
 """
@@ -20,12 +20,13 @@ Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
-def get_client():
-    """Creates a client to connect with the Supabase Database
-    Raises: `ValueError` if there is a problem accessing variables from .env
-            `Exception` if there is any errors creating the client."""
+def get_client() -> Client:
+    """Creates a client to connect with the Supabase Database.
+    Raises:
+        ValueError: if required environment variables are missing.
+        Exception: if client creation fails.
+    """
 
-    #Get .env variables for database connection
     env = load_env_variables()
     supabase_url = env["SUPABASE_URL"]
     service_key = env["SERVICE_KEY"]
@@ -34,15 +35,9 @@ def get_client():
         raise ValueError("SUPABASE_URL not found in .env")
     if service_key is None:
         raise ValueError("SERVICE_KEY not found in .env")
-    
-    client = create_client(supabase_url, service_key)
 
-    try:
-        yield client
-    except Exception as e:
-        raise e
-    finally:
-        client.auth.sign_out()
+    client = create_client(supabase_url, service_key)
+    return client
 
 def _get_data_type_list_from_response(data: Optional[Iterable[dict]], 
                                  data_type: CreateFromDict) -> Optional[Iterable[CreateFromDict]]:
@@ -111,7 +106,7 @@ def get_current_user(client: Client = Depends(get_client), token: str = Depends(
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = get_user_by_username(username=TokenData.username, client=client)
+    user = get_user_by_username(username=username, client=client)
     if user is None:
         raise credentials_exception
     return user
@@ -281,13 +276,21 @@ def remove_chore(household: int, choreid: int, client: Optional[Client] = None):
 
     return response.data
 
-def update_chore(household: int, chore: Chore, client: Optional[Client] = None):
+def update_chore(
+    household: int,
+    choreid: int,
+    status: Optional[str] = None,
+    assignee_id: Optional[int] = None,
+    client: Optional[Client] = None
+):
     """
     Update chore data in database.
 
     Inputs:
         household: Household ID the chore belongs to.
-        chore: Updated Chore object.
+        choreid: Unique identifier of the chore.
+        status: Optional new status of the chore.
+        assignee_id: Optional new assignee user ID. Use None to unassign.
         client: Optional Supabase client.
 
     Output:
@@ -296,22 +299,19 @@ def update_chore(household: int, chore: Chore, client: Optional[Client] = None):
     if client is None:
         client = get_client()
 
-    data = {
-        Chore_Col_Name.cname.value: chore.name,
-        Chore_Col_Name.description.value: chore.description,
-        Chore_Col_Name.request_date.value: chore.request_date.isoformat(),
-        Chore_Col_Name.due_date.value: chore.due_date.isoformat(),
-        Chore_Col_Name.requester.value: chore.requester.userid,
-        Chore_Col_Name.assignee.value: chore.assignee.userid if chore.assignee else None,
-        Chore_Col_Name.status.value: chore.status.name,
-    }
+    data = {}
+
+    if status is not None:
+        data[Chore_Col_Name.status.value] = status
+
+    data[Chore_Col_Name.assignee.value] = assignee_id
 
     response = (
         client
         .table("chores")
         .update(data)
         .eq(Chore_Col_Name.householdid.value, household)
-        .eq(Chore_Col_Name.cname.value, chore.name)
+        .eq(Chore_Col_Name.choreid.value, choreid)
         .execute()
     )
 

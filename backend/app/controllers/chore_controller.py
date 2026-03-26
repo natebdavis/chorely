@@ -39,6 +39,21 @@ class ChoreCreateRequest(BaseModel):
     due_date: str
     assignee_id: Optional[int] = None
 
+class ChoreUpdateRequest(BaseModel):
+    """
+    Request body schema for updating a Chore.
+
+    Inputs:
+        householdid: Unique identifier for the Household.
+        status: Optional new status of the Chore.
+        assignee_id: Optional new assignee user ID. Use null to unassign.
+
+    Output:
+        JSON body representing a Chore update request.
+    """
+    householdid: int
+    status: Optional[str] = None
+    assignee_id: Optional[int] = None
 
 class ChoreDeleteRequest(BaseModel):
     """
@@ -76,6 +91,77 @@ class ChoreResponse(BaseModel):
     assignee: Optional[str] = None
     status: Optional[str] = None
 
+
+@router.patch("/{choreid}", response_model=ChoreResponse)
+def update_chore(choreid: int, payload: ChoreUpdateRequest):
+    """
+    Update a chore's status and/or assignee.
+
+    Inputs:
+        choreid: Unique identifier of the Chore.
+        payload: ChoreUpdateRequest containing updated fields.
+
+    Outputs:
+        Updated ChoreResponse object.
+
+    Raises:
+        HTTPException(400) if status is invalid.
+        HTTPException(404) if assignee is not found or chore is not found.
+        HTTPException(500) if update fails.
+    """
+    try:
+        valid_statuses = {"UNASSIGNED", "IN_PROGRESS", "COMPLETE"}
+
+        if payload.status is not None and payload.status not in valid_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid status value"
+            )
+
+        if payload.assignee_id is not None:
+            assignee = database.get_user(payload.assignee_id)
+            if not assignee:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Assignee not found"
+                )
+
+        updated = database.update_chore(
+            household=payload.householdid,
+            choreid=choreid,
+            status=payload.status,
+            assignee_id=payload.assignee_id,
+        )
+
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chore not found"
+            )
+
+        chores = database.get_chores(payload.householdid)
+        if not chores:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Updated chore not found"
+            )
+
+        for chore in chores:
+            if chore.choreid == choreid:
+                return ChoreResponse(**chore.createBaseModel())
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Updated chore not found"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update chore: {str(e)}"
+        )
 
 @router.get("/{householdid}", response_model=list[ChoreResponse])
 def get_household_chores(householdid: int):
