@@ -65,6 +65,33 @@ def _select_all_where_equals_query(table_name: str, col_name: str, value,
 
     return response.data
 
+def is_username_available(username: str, client: Optional[Client] = None) -> bool:
+    """Check if a username is available for registration.
+    Output: `True` if the username is not taken, `False` otherwise."""
+    if client is None:
+        client = get_client()
+
+    response = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
+    return response.data is None
+
+def is_email_available(email: str, client: Optional[Client] = None) -> bool:
+    """Check if an email is available for registration.
+    Output: `True` if the email is not taken, `False` otherwise."""
+    if client is None:
+        client = get_client()
+
+    response = _select_all_where_equals_query("users", User_Col_Name.email.value, email, client)
+    return response.data is None
+
+def is_phone_num_available(phone_num: int, client: Optional[Client] = None) -> bool:
+    """Check if a phone number is available for registration.
+    Output: `True` if the phone number is not taken, `False` otherwise."""
+    if client is None:
+        client = get_client()
+
+    response = _select_all_where_equals_query("users", User_Col_Name.phone_num.value, phone_num, client)
+    return response.data is None
+
 def get_user_by_username(username: str, client: Optional[Client] = None) -> Optional[User]:
     """Get a single `user` given a username.
     Output: A `User` Object created using the first entry matching the username"""
@@ -182,17 +209,20 @@ def get_chores(householdid: int, client: Optional[Client] = None,
     # The data is in data
     return _get_data_type_list_from_response(data, Chore)
 
-def add_user(household: int, user: User, client: Optional[Client] = None):
+def add_user(user: User, client: Optional[Client] = None):
     """Add user to database"""
 
     if client is None:
         client = get_client()
 
     data = {
-        User_Col_Name.householdid.value: household,
+        User_Col_Name.householdid.value: None,
         User_Col_Name.username.value: user.username,
         User_Col_Name.fname.value: user.fname,
-        User_Col_Name.lname.value: user.lname
+        User_Col_Name.lname.value: user.lname, 
+        User_Col_Name.email.value: user.email,
+        User_Col_Name.phone.value: user.phone_num,
+        User_Col_Name.passhash.value: user.passhash
     }
 
     response = client.table("users").insert(data).execute()

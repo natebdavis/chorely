@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import Optional, List
 from supabase import Client
 
-from app.database import get_users, get_user, add_user, get_client, get_user_by_username
+from app.database import get_users, get_user, add_user, get_client, is_username_available, is_email_available, is_phone_num_available, authenticate_user
 from app.user import User
-from app.utils import get_password_hash
+from app.utils import get_password_hash, create_access_token, Token
 
 """
 Module for managing User Controller operations.
@@ -28,7 +29,7 @@ class UserCreateRequest(BaseModel):
         lname: Last name of the User.
         email: Email address of the User.
         phone_num: Optional phone number.
-        householdid: Household the user belongs to.
+        passhash: Password hash for the User.
 
     Output:
         JSON body representing a User creation request.
@@ -39,8 +40,7 @@ class UserCreateRequest(BaseModel):
     lname: str
     email: str
     phone_num: Optional[int] = None
-    householdid: int
-    password: str
+    passhash: str
 
 
 class UserResponse(BaseModel):
@@ -135,9 +135,20 @@ def create_user(request: UserCreateRequest):
         Success message if user creation succeeds.
     """
 
+    if not is_username_available(request.username):
+        raise HTTPException(status_code=400, detail="Username already registered")
+
+    if not is_email_available(request.email):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    if request.phone_num and not is_phone_num_available(request.phone_num):
+        raise HTTPException(status_code=400, detail="Phone number already registered")
+    
+    hashed_password = get_password_hash(request.password)
+
     user = User(
         username=request.username,
-        passhash=request.passhash,
+        passhash=hashed_password,
         userid=0,  # placeholder until database assigns ID
         fname=request.fname,
         lname=request.lname,
@@ -145,28 +156,18 @@ def create_user(request: UserCreateRequest):
         phone_num=request.phone_num,
     )
 
-    add_user(request.householdid, user)
+    add_user(user)
 
     return {"message": "User created successfully"}
 
-@router.post("/signup", response_model=UserResponse)
-def signup(user: UserCreateRequest, client: Client = Depends(get_client)):
-    client_user = get_user_by_username(client=client, username=user.username)
-    if client_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    hashed_password = get_password_hash(user.password)
-    client_user = User(
-        username=user.username,
-        fname=user.fname,
-        lname=user.lname,
-        email=user.email,
-        phone_num=user.phone_num,
-        householdid=user.householdid,
-        passhash=hashed_password,
-        userid=0)  # placeholder until database assigns ID
-
-    # insert function from database module to insert user into database
-    # get userid from database and update client_user.userid with the new value
-    # return user object, or base model of user object or a boolean indicating success of the operation, haven't decided yet
-
-    pass
+@router.post("/token", response_model=Token)
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
