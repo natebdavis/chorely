@@ -144,7 +144,7 @@ def get_user(userid: int, client: Optional[Client] = None) -> Optional[User]:
 
     first = 0
     user_data = _select_all_where_equals_query("users", User_Col_Name.userid.value, userid, client)
-    if user_data[first]:
+    if user_data and user_data[first]:
         return User.from_dict(user_data[first])
     else:
         return None
@@ -216,7 +216,7 @@ def add_user(user: User, client: Optional[Client] = None):
         client = get_client()
 
     data = {
-        User_Col_Name.householdid.value: None,
+        User_Col_Name.householdid.value: user.householdid,
         User_Col_Name.username.value: user.username,
         User_Col_Name.fname.value: user.fname,
         User_Col_Name.lname.value: user.lname, 

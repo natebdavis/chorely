@@ -34,7 +34,7 @@ class User(CreateFromDict):
     """Regular expression for validating email."""
 
     def __init__(self, username: str, passhash: str, userid: int, fname: str, lname: str, email: str, 
-                 phone_num: Optional[int] = None):
+                 phone_num: Optional[int] = None, householdid: Optional[int] = None):
         """Constructor for User Class.
         Inputs: `email` will be checked if it is a valid email, if not then it is set to null.
         `phone_num` can be null or have a value upon creation of the user object.
@@ -47,6 +47,7 @@ class User(CreateFromDict):
         self.lname = lname
         self.phone_num = phone_num
         self.email = email if self.__isValidEmail(email) else None
+        self.householdid = householdid
 
     @classmethod
     def from_dict(cls, user_dict: dict):
@@ -59,8 +60,9 @@ class User(CreateFromDict):
         lname = user_dict[User_Col_Name.lname.value]
         email = user_dict[User_Col_Name.email.value]
         phone = user_dict[User_Col_Name.phone.value]
+        householdid = user_dict[User_Col_Name.householdid.value]
 
-        return cls(username, passhash, userid, fname, lname, email = email, phone_num = phone)
+        return cls(username, passhash, userid, fname, lname, email = email, phone_num = phone, householdid = householdid)
     
     @property
     def full_name(self) -> str:
@@ -97,4 +99,7 @@ class User(CreateFromDict):
             "email": self.email,
             "phone_num": self.phone_num
         }
-        
+    
+    def __eq__(self, other: "User"):
+        return (self.username, self.passhash, self.userid, self.fname, self.lname, self.email, self.phone_num, self.householdid) ==\
+            (other.username, other.passhash, other.userid, other.fname, other.lname, other.email, other.phone_num, other.householdid)
