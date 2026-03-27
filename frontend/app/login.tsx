@@ -1,6 +1,17 @@
 // this is the Login Screen 
 
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ImageBackground, Image } from "react-native";
+import { View, Text, 
+  TextInput, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ImageBackground, 
+  Image, 
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback, 
+  Platform, 
+  Keyboard, 
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 export default function Login() {
@@ -10,48 +21,66 @@ export default function Login() {
       style={styles.background}
       resizeMode="cover"
     >
-      <View style={styles.container}>
 
-        {/* Question about registering */}
-        <Text style={styles.signupText}>
-          Not registered yet?{" "}
-          <Text style={styles.signupLink} 
-          onPress={() => router.push("/register")}
-          >Sign up here</Text>
-        </Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={styles.keyboardContainer}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+        <View style={styles.container}>
 
-        {/* white login box */}
-       <View style={styles.card}>
+          {/* Question about registering */}
+          <Text style={styles.signupText}>
+            Not registered yet?{" "}
+            <Text style={styles.signupLink} 
+            onPress={() => router.push("/register")}
+            >Sign up here</Text>
+          </Text>
 
-           <Image //this is the logo
-             source={require("../assets/images/chorely_logo.png")}
-            style={styles.logo}
-            />
+          {/* white login box */}
+        <View style={styles.card}>
 
-          <Text style={styles.title}>Welcome to Chorely!</Text>
+            <Image //this is the logo
+              source={require("../assets/images/chorely_logo.png")}
+              style={styles.logo}
+              />
 
-          <TextInput //this is where a user will enter their username 
-            placeholder="Username"
-            placeholderTextColor="#666"
-            style={styles.input}
-          />
+            <Text style={styles.title}>Welcome to Chorely!</Text>
 
-          <TextInput //This is where a user will enter their password 
-            placeholder="Password"
-            placeholderTextColor="#666"
-            secureTextEntry
-            style={styles.input}
-          />
+            
+            <View style={styles.inputWrapper}> 
+            <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
+      
+              <TextInput
+                placeholder="Username"
+                placeholderTextColor="#666"
+                style={styles.input}
+              />
+            </View>
 
-          <TouchableOpacity //this is the Login Button 
-            style={styles.button}
-            onPress={() => router.replace("/(tabs)")}
-          >
-            <Text style={styles.buttonText}>Login</Text>
-          </TouchableOpacity>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.icon} />
+              
+              <TextInput
+                placeholder="Password"
+                placeholderTextColor="#666"
+                secureTextEntry
+                style={styles.input}
+              />
+            </View>
+
+            <TouchableOpacity //this is the Login Button 
+              style={styles.button}
+              onPress={() => router.replace("/(tabs)")}
+            >
+              <Text style={styles.buttonText}>Login</Text>
+            </TouchableOpacity>
+          </View>
+
         </View>
+       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
 
-      </View>
     </ImageBackground>
   );
 }
@@ -92,11 +121,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
   },
-  input: {
-    backgroundColor: "rgba(209, 216, 235, 0.7)",
-    padding: 14,
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(209, 216, 235, 0.7)", 
     borderRadius: 12,
+    paddingHorizontal: 12,
     marginBottom: 15,
+  },
+  input: {
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 5,
+    marginTop: 5, 
+    flex: 1,
+    paddingVertical: 14,
   },
   button: {
     backgroundColor: "#000000",
@@ -109,6 +148,12 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  icon: {
+    marginRight: 8,
+  },
+  keyboardContainer: {
+    flex: 1,
   },
   logo: {
     width: 120,
