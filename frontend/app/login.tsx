@@ -9,7 +9,7 @@ import { View, Text,
   KeyboardAvoidingView,
   TouchableWithoutFeedback, 
   Platform, 
-  Keyboard, 
+  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -49,9 +49,9 @@ export default function Login() {
 
             
             <View style={styles.inputWrapper}> 
-            <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
+            <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} /> 
       
-              <TextInput
+              <TextInput //this is where users will enter their username
                 placeholder="Username"
                 placeholderTextColor="#666"
                 style={styles.input}
@@ -61,7 +61,7 @@ export default function Login() {
             <View style={styles.inputWrapper}>
               <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.icon} />
               
-              <TextInput
+              <TextInput //this is where users will enter their password
                 placeholder="Password"
                 placeholderTextColor="#666"
                 secureTextEntry
