@@ -106,7 +106,7 @@ def authenticate_user(username: str, password: str, client: Optional[Client] = N
     user = get_user_by_username(username, client)
     if not user:
         return False
-    if not verify_password(password, user.passhash):
+    if not verify_password(password, user.passhash.strip()):
         return False
     return user
 

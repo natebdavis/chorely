@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import List
-from app.utils import Token, create_access_token, authenticate_user
-from app.database import get_current_user
+from app.utils import Token, create_access_token
+from app.database import get_current_user, authenticate_user
 from app.user import UserResponse
 
 """
