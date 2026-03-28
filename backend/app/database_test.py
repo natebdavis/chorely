@@ -13,7 +13,7 @@ def test_add_get_remove_user():
     """Tests if add_user, get_user, and remove_user work. Ideally, these would be separate test functions, but 
     they are needed for each others' tests."""
 
-    user: User = User(
+    user = User(
         username="bob123",
         passhash="",
         userid=-1,
@@ -24,10 +24,10 @@ def test_add_get_remove_user():
     )
     
     # make temp user
-    result = add_user(user)
+    response = add_user(user)
 
     # test if user was made
-    userid: int = result[0]["userid"]
+    userid: int = response[0]["userid"]
     user2 = get_user(userid)
     assert user2
     user.userid = user2.userid

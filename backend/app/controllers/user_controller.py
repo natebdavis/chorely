@@ -77,7 +77,7 @@ def get_single_user(userid: int):
 
 
 @router.post("/users")
-def create_user(request: UserCreateRequest):
+def create_user(request: UserCreateRequest) -> dict[str, int]:
     """
     Create a new User in the database.
 
@@ -109,7 +109,7 @@ def create_user(request: UserCreateRequest):
         phone_num=request.phone_num,
     )
 
-    add_user(user)
+    response = add_user(user)
 
-    return {"message": "User created successfully"}
+    return {"userid": response[0]["userid"]}
 

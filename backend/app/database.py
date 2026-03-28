@@ -69,7 +69,7 @@ def is_username_available(username: str, client: Optional[Client] = None) -> boo
         client = get_client()
 
     response = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
-    return response.data is None
+    return not response
 
 def is_email_available(email: str, client: Optional[Client] = None) -> bool:
     """Check if an email is available for registration.
@@ -78,7 +78,7 @@ def is_email_available(email: str, client: Optional[Client] = None) -> bool:
         client = get_client()
 
     response = _select_all_where_equals_query("users", User_Col_Name.email.value, email, client)
-    return response.data is None
+    return not response
 
 def is_phone_num_available(phone_num: int, client: Optional[Client] = None) -> bool:
     """Check if a phone number is available for registration.
@@ -87,7 +87,7 @@ def is_phone_num_available(phone_num: int, client: Optional[Client] = None) -> b
         client = get_client()
 
     response = _select_all_where_equals_query("users", User_Col_Name.phone_num.value, phone_num, client)
-    return response.data is None
+    return not response
 
 def get_user_by_username(username: str, client: Optional[Client] = None) -> Optional[User]:
     """Get a single `user` given a username.

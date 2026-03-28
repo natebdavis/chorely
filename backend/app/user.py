@@ -20,7 +20,7 @@ class UserCreateRequest(BaseModel):
         lname: Last name of the User.
         email: Email address of the User.
         phone_num: Optional phone number.
-        passhash: Password hash for the User.
+        password: Password hash for the User.
 
     Output:
         JSON body representing a User creation request.
@@ -31,7 +31,7 @@ class UserCreateRequest(BaseModel):
     lname: str
     email: str
     phone_num: Optional[int] = None
-    passhash: str
+    password: str
 
 
 class UserResponse(BaseModel):
@@ -141,5 +141,5 @@ class User(CreateFromDict):
         }
     
     def __eq__(self, other: "User"):
-        return (self.username, self.passhash.strip(), self.userid, self.fname, self.lname, self.email, self.phone_num, self.householdid) ==\
-            (other.username, other.passhash.strip(), other.userid, other.fname, other.lname, other.email, other.phone_num, other.householdid)
+        return (self.username, self.userid, self.fname, self.lname, self.email, self.phone_num, self.householdid) ==\
+            (other.username, other.userid, other.fname, other.lname, other.email, other.phone_num, other.householdid)
