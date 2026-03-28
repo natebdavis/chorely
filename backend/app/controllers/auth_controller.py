@@ -3,6 +3,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import List
 from app.utils import Token, create_access_token, authenticate_user
+from app.database import get_current_user
+from app.user import UserResponse
 
 """
 Module for managing Authentication Controller operations.
@@ -69,7 +71,7 @@ fake_users: List[TempUser] = [
     TempUser(username="gilligan", password="password123"),
 ]
 
-@router.post("/token", response_model=Token)
+@router.post("/login", response_model=Token)
 def login_for_access_token(request: OAuth2PasswordRequestForm = Depends()):
     """ 
     Attempt to log a User into System and generate a session token if successful
@@ -94,8 +96,12 @@ def login_for_access_token(request: OAuth2PasswordRequestForm = Depends()):
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
+@router.get("/me", response_model=UserResponse, summary="Get my profile (protected)")
+def read_me(current_user: UserResponse = Depends(get_current_user)):
+    return current_user
 
-@router.post("/login", response_model=LoginResponse)
+
+@router.post("/test", response_model=LoginResponse)
 def login(request: LoginRequest):
     """
     Attempt to log a User into the system.

@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, status
 from jose import JWTError, jwt
 
 from app.chore import Chore, Notification, Chore_Col_Name, Status
-from app.user import User, User_Col_Name
+from app.user import User, User_Col_Name, UserResponse
 from app.utils import CreateFromDict, load_env_variables, verify_password, TokenData, oauth2_scheme
 
 
@@ -110,7 +110,7 @@ def authenticate_user(username: str, password: str, client: Optional[Client] = N
         return False
     return user
 
-def get_current_user(client: Client = Depends(get_client), token: str = Depends(oauth2_scheme)):
+async def get_current_user(client: Client = Depends(get_client), token: str = Depends(oauth2_scheme)) ->UserResponse:
     """Get the current user given a JWT token.
     Output: A `User` Object if the token is valid, raises an HTTPException otherwise."""
     credentials_exception = HTTPException(
@@ -133,7 +133,7 @@ def get_current_user(client: Client = Depends(get_client), token: str = Depends(
     user = get_user_by_username(username=token_data.username, client=client)
     if user is None:
         raise credentials_exception
-    return user
+    return user.createResponseModel()
 
 def get_user(userid: int, client: Optional[Client] = None) -> Optional[User]:
     """Get a single `user` given a userid.
