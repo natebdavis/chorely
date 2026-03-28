@@ -3,8 +3,9 @@ import datetime as DT
 from typing import Optional, TYPE_CHECKING
 from enum import Enum, auto
 import pytz
+from pydantic import BaseModel, Field
 
-from app.misc import CreateFromDict
+from app.utils import CreateFromDict
 
 if TYPE_CHECKING:
     from app.user import User
@@ -14,6 +15,79 @@ Module for managing Chore operations.
 Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
 
+class ChoreCreateRequest(BaseModel):
+    """
+    Request body schema for creating a new Chore.
+
+    Inputs:
+        householdid: Unique identifier for the Household.
+        requester_id: Unique identifier of the User requesting the Chore.
+        name: Name of the Chore.
+        description: Description of the Chore.
+        due_date: Datetime string representing when the Chore is due.
+        assignee_id: Optional unique identifier of the User assigned to the Chore.
+
+    Output:
+        JSON body representing a Chore creation request.
+    """
+    householdid: int
+    requester_id: int
+    name: str = Field(..., min_length=1, max_length=50)
+    description: str = Field(..., min_length=1, max_length=3000)
+    due_date: str
+    assignee_id: Optional[int] = None
+
+class ChoreUpdateRequest(BaseModel):
+    """
+    Request body schema for updating a Chore.
+
+    Inputs:
+        householdid: Unique identifier for the Household.
+        status: Optional new status of the Chore.
+        assignee_id: Optional new assignee user ID. Use null to unassign.
+
+    Output:
+        JSON body representing a Chore update request.
+    """
+    householdid: int
+    status: Optional[str] = None
+    assignee_id: Optional[int] = None
+
+class ChoreDeleteRequest(BaseModel):
+    """
+    Request body schema for deleting a Chore.
+
+    Inputs:
+        householdid: Unique identifier for the Household.
+        choreid: Unique identifier of the Chore to delete.
+
+    Output:
+        JSON body representing a Chore deletion request.
+    """
+    householdid: int
+    choreid: int
+
+
+class ChoreResponse(BaseModel):
+    """
+    Response schema returned for Chore-related API requests.
+
+    Outputs:
+        choreid: Unique identifier of the Chore.
+        name: Name of the Chore.
+        description: Description of the Chore.
+        request_date: Unix timestamp representing when the Chore was requested.
+        due_date: Unix timestamp representing when the Chore is due.
+        assignee: Full name of the assignee, or null if unassigned.
+        status: Current status of the Chore.
+    """
+    choreid: Optional[int] = None
+    name: str
+    description: str
+    request_date: Optional[int] = None
+    due_date: Optional[int] = None
+    assignee: Optional[str] = None
+    status: Optional[str] = None
 
 class Chore_Col_Name(Enum):
     choreid = "choreid"

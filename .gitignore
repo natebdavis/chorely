@@ -65,3 +65,35 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+backend/__pycache__/main.cpython-312.pyc
+backend/app/__pycache__/chore.cpython-312.pyc
+backend/app/__pycache__/database_test.cpython-312.pyc
+backend/app/__pycache__/database.cpython-312.pyc
+backend/app/__pycache__/misc.cpython-312.pyc
+backend/app/__pycache__/user.cpython-312.pyc
+backend/app/controllers/__pycache__/__init__.cpython-312.pyc
+backend/app/controllers/__pycache__/auth_controller.cpython-312.pyc
+backend/app/controllers/__pycache__/chore_controller.cpython-312.pyc
+backend/app/controllers/__pycache__/household_controller.cpython-312.pyc
+backend/app/controllers/__pycache__/membership_controller.cpython-312.pyc
+backend/app/controllers/__pycache__/notification_controller.cpython-312.pyc
+backend/app/controllers/__pycache__/user_controller.cpython-312.pyc
+frontend/app.json
+frontend/package.json
+.gitignore
+backend/__pycache__/main.cpython-312.pyc
+backend/app/__pycache__/chore.cpython-312.pyc
+backend/app/__pycache__/database.cpython-312.pyc
+backend/app/__pycache__/user.cpython-312.pyc
+backend/app/controllers/__pycache__/__init__.cpython-312.pyc
+backend/app/controllers/__pycache__/auth_controller.cpython-312.pyc
+backend/app/controllers/__pycache__/chore_controller.cpython-312.pyc
+backend/app/controllers/__pycache__/user_controller.cpython-312.pyc
+backend/app/__pycache__/chore.cpython-312.pyc
+backend/app/__pycache__/database.cpython-312.pyc
+backend/app/__pycache__/user.cpython-312.pyc
+backend/app/controllers/__pycache__/__init__.cpython-312.pyc
+backend/app/controllers/__pycache__/auth_controller.cpython-312.pyc
+backend/app/controllers/__pycache__/chore_controller.cpython-312.pyc
+backend/app/controllers/__pycache__/user_controller.cpython-312.pyc
+backend/__pycache__/main.cpython-312.pyc

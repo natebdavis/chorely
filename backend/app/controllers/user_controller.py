@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional, List
+from typing import List
 
-from app.database import get_users, get_user, add_user
-from app.user import User
+from app.database import get_users, get_user, add_user, is_username_available, is_email_available, is_phone_num_available, authenticate_user
+from app.user import User, UserResponse, UserCreateRequest
+from app.utils import get_password_hash
 
 """
 Module for managing User Controller operations.
@@ -14,50 +14,6 @@ Contributors: Edmund Krajewski
 """
 
 router = APIRouter(tags=["users"])
-
-
-class UserCreateRequest(BaseModel):
-    """
-    Request body schema for creating a new User.
-
-    Inputs:
-        username: Username of the User.
-        fname: First name of the User.
-        lname: Last name of the User.
-        email: Email address of the User.
-        phone_num: Optional phone number.
-        householdid: Household the user belongs to.
-
-    Output:
-        JSON body representing a User creation request.
-    """
-
-    username: str
-    fname: str
-    lname: str
-    email: str
-    phone_num: Optional[int] = None
-    householdid: int
-
-
-class UserResponse(BaseModel):
-    """
-    Response schema returned for User-related API requests.
-
-    Outputs:
-        username: Username of the User.
-        fname: First name of the User.
-        lname: Last name of the User.
-        email: Email address.
-        phone_num: Optional phone number.
-    """
-
-    username: str
-    fname: str
-    lname: str
-    email: Optional[str]
-    phone_num: Optional[int]
-
 
 @router.get("/users/{householdid}", response_model=List[UserResponse])
 def get_household_users(householdid: int):
@@ -132,8 +88,20 @@ def create_user(request: UserCreateRequest):
         Success message if user creation succeeds.
     """
 
+    if not is_username_available(request.username):
+        raise HTTPException(status_code=409, detail="Username not available")
+
+    if not is_email_available(request.email):
+        raise HTTPException(status_code=409, detail="Email not available")
+
+    if request.phone_num and not is_phone_num_available(request.phone_num):
+        raise HTTPException(status_code=409, detail="Phone number not available")
+    
+    hashed_password = get_password_hash(request.password)
+
     user = User(
         username=request.username,
+        passhash=hashed_password,
         userid=0,  # placeholder until database assigns ID
         fname=request.fname,
         lname=request.lname,
@@ -141,6 +109,7 @@ def create_user(request: UserCreateRequest):
         phone_num=request.phone_num,
     )
 
-    add_user(request.householdid, user)
+    response = add_user(user)
 
-    return {"message": "User created successfully"}
+    return {"message": "User created successfully", "userid": response[0]["userid"]}
+

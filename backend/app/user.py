@@ -1,16 +1,56 @@
 from typing import Optional
 import re
-from collections.abc import Iterable
-from typing import Set
-from enum import Enum, auto
-from app.chore import Chore, Notification
-from app.misc import CreateFromDict
+from enum import Enum
+from app.utils import CreateFromDict
+from pydantic import BaseModel
 
 
 """
 Module for managing User operations.
-Contributers: Gilligan Berlinski, Nathaniel Davis
+Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
+
+class UserCreateRequest(BaseModel):
+    """
+    Request body schema for creating a new User.
+
+    Inputs:
+        username: Username of the User.
+        fname: First name of the User.
+        lname: Last name of the User.
+        email: Email address of the User.
+        phone_num: Optional phone number.
+        password: Password hash for the User.
+
+    Output:
+        JSON body representing a User creation request.
+    """
+
+    username: str
+    fname: str
+    lname: str
+    email: str
+    phone_num: Optional[int] = None
+    password: str
+
+
+class UserResponse(BaseModel):
+    """
+    Response schema returned for User-related API requests.
+
+    Outputs:
+        username: Username of the User.
+        fname: First name of the User.
+        lname: Last name of the User.
+        email: Email address.
+        phone_num: Optional phone number.
+    """
+
+    username: str
+    fname: str
+    lname: str
+    email: Optional[str]
+    phone_num: Optional[int]
 
 class User_Col_Name(Enum):
     userid = "userid"
@@ -33,32 +73,36 @@ class User(CreateFromDict):
     _EMAIL_REGULAR_EXPRESSION = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}"
     """Regular expression for validating email."""
 
-    def __init__(self, username: str, userid: int, fname: str, lname: str, email: str, 
-                 phone_num: Optional[int] = None):
+    def __init__(self, username: str, passhash: str, userid: int, fname: str, lname: str, email: str, 
+                 phone_num: Optional[int] = None, householdid: Optional[int] = None):
         """Constructor for User Class.
         Inputs: `email` will be checked if it is a valid email, if not then it is set to null.
         `phone_num` can be null or have a value upon creation of the user object.
         Output: `User` Object
         """
         self.username = username
+        self.passhash = passhash
         self.userid = userid
         self.fname = fname
         self.lname = lname
         self.phone_num = phone_num
         self.email = email if self.__isValidEmail(email) else None
+        self.householdid = householdid
 
     @classmethod
     def from_dict(cls, user_dict: dict):
         """Alternate Constructor for `User`
         Input: Dictionary with all values assoicated with a `User`"""
         username = user_dict[User_Col_Name.username.value]
+        passhash = user_dict[User_Col_Name.passhash.value]
         userid = user_dict[User_Col_Name.userid.value]
         fname = user_dict[User_Col_Name.fname.value]
         lname = user_dict[User_Col_Name.lname.value]
         email = user_dict[User_Col_Name.email.value]
         phone = user_dict[User_Col_Name.phone.value]
+        householdid = user_dict[User_Col_Name.householdid.value]
 
-        return cls(username, userid, fname, lname, email = email, phone_num = phone)
+        return cls(username, passhash, userid, fname, lname, email = email, phone_num = phone, householdid = householdid)
     
     @property
     def full_name(self) -> str:
@@ -85,3 +129,17 @@ class User(CreateFromDict):
          Output: `True` if email is valid, `False` if otherwise."""
          valid_email = re.match(self._EMAIL_REGULAR_EXPRESSION, email)
          return True if valid_email else False
+    
+    def createResponseModel(self) -> UserResponse:
+        """Create a `UserResponse` model from the `User` object."""
+        return {
+            "username": self.username,
+            "fname": self.fname,
+            "lname": self.lname,
+            "email": self.email,
+            "phone_num": self.phone_num
+        }
+    
+    def __eq__(self, other: "User"):
+        return (self.username, self.userid, self.fname, self.lname, self.email, self.phone_num, self.householdid) ==\
+            (other.username, other.userid, other.fname, other.lname, other.email, other.phone_num, other.householdid)

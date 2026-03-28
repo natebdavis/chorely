@@ -3,12 +3,13 @@ from typing import Optional
 import os
 from dotenv import load_dotenv
 import pathlib
-from fastapi import FastAPI, Depends, HTTPException, status
 from supabase import Client, create_client
+from fastapi import Depends, HTTPException, status
+from jose import JWTError, jwt
 
 from app.chore import Chore, Notification, Chore_Col_Name, Status
-from app.user import User, User_Col_Name
-from app.misc import CreateFromDict
+from app.user import User, User_Col_Name, UserResponse
+from app.utils import CreateFromDict, load_env_variables, verify_password, TokenData, oauth2_scheme
 
 
 """
@@ -16,35 +17,23 @@ Module for managing Database operations.
 Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
 
-app = FastAPI()
+def get_client() -> Client:
+    """Creates a client to connect with the Supabase Database.
+    Raises:
+        ValueError: if required environment variables are missing.
+        Exception: if client creation fails.
+    """
 
-def get_client() -> Optional[Client]:
-    """Creates a client to connect with the Supabase Database
-    Raises: `ValueError` if there is a problem accessing variables from .env
-            `Exception` if there is any errors creating the client."""
-
-    # Load environment variables from .env file in root folder
-    load_dotenv(dotenv_path=pathlib.Path(__file__).resolve().parent.parent / '.env')
-
-    #Get .env variables for database connection
-    supabase_url = os.getenv("SUPABASE_URL")
-    secret_key = os.getenv("SECRET_KEY")
-    service_key = os.getenv("SERVICE_KEY")
+    env = load_env_variables()
+    supabase_url = env["SUPABASE_URL"]
+    service_key = env["SERVICE_KEY"]
 
     if supabase_url is None:
         raise ValueError("SUPABASE_URL not found in .env")
-    if secret_key is None:
-        raise ValueError("SECRET_KEY not found in .env")
     if service_key is None:
         raise ValueError("SERVICE_KEY not found in .env")
-    
-    client = None
 
-    try:
-        client = create_client(supabase_url, service_key)
-    except Exception as e:
-        raise
-
+    client = create_client(supabase_url, service_key)
     return client
 
 def _get_data_type_list_from_response(data: Optional[Iterable[dict]], 
@@ -73,13 +62,86 @@ def _select_all_where_equals_query(table_name: str, col_name: str, value,
 
     return response.data
 
+def is_username_available(username: str, client: Optional[Client] = None) -> bool:
+    """Check if a username is available for registration.
+    Output: `True` if the username is not taken, `False` otherwise."""
+    if client is None:
+        client = get_client()
+
+    response = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
+    return not response
+
+def is_email_available(email: str, client: Optional[Client] = None) -> bool:
+    """Check if an email is available for registration.
+    Output: `True` if the email is not taken, `False` otherwise."""
+    if client is None:
+        client = get_client()
+
+    response = _select_all_where_equals_query("users", User_Col_Name.email.value, email, client)
+    return not response
+
+def is_phone_num_available(phone_num: int, client: Optional[Client] = None) -> bool:
+    """Check if a phone number is available for registration.
+    Output: `True` if the phone number is not taken, `False` otherwise."""
+    if client is None:
+        client = get_client()
+
+    response = _select_all_where_equals_query("users", User_Col_Name.phone_num.value, phone_num, client)
+    return not response
+
+def get_user_by_username(username: str, client: Optional[Client] = None) -> Optional[User]:
+    """Get a single `user` given a username.
+    Output: A `User` Object created using the first entry matching the username"""
+
+    first = 0
+    user_data = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
+    if user_data[first]:
+        return User.from_dict(user_data[first])
+    else:
+        return None
+    
+def authenticate_user(username: str, password: str, client: Optional[Client] = None) -> Optional[User]:
+    """Authenticate a user given a username and password.
+    Output: A `User` Object if the username and password match, `False` otherwise."""
+    user = get_user_by_username(username, client)
+    if not user:
+        return False
+    if not verify_password(password, user.passhash.strip()):
+        return False
+    return user
+
+async def get_current_user(client: Client = Depends(get_client), token: str = Depends(oauth2_scheme)) ->UserResponse:
+    """Get the current user given a JWT token.
+    Output: A `User` Object if the token is valid, raises an HTTPException otherwise."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    env = load_env_variables()
+    secret_key = env["SECRET_KEY"]
+    algorithm = env["ALGORITHM"]
+
+    try:
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+        username: str = payload.get("sub")
+        token_data = TokenData(username=username)
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = get_user_by_username(username=token_data.username, client=client)
+    if user is None:
+        raise credentials_exception
+    return user.createResponseModel()
+
 def get_user(userid: int, client: Optional[Client] = None) -> Optional[User]:
     """Get a single `user` given a userid.
     Output: A `User` Object created using the first entry matching the userid"""
 
     first = 0
     user_data = _select_all_where_equals_query("users", User_Col_Name.userid.value, userid, client)
-    if user_data[first]:
+    if user_data and user_data[first]:
         return User.from_dict(user_data[first])
     else:
         return None
@@ -106,7 +168,6 @@ def get_chores(householdid: int, client: Optional[Client] = None,
     # Fetch all data from the 'chores' table
     data = _select_all_where_equals_query("chores", Chore_Col_Name.householdid.value, householdid, client)
 
-    first = 0
     if not users:
         users = get_users(householdid, client)
 
@@ -145,25 +206,20 @@ def get_chores(householdid: int, client: Optional[Client] = None,
     # The data is in data
     return _get_data_type_list_from_response(data, Chore)
 
-def check_updates(users: Iterable[User], chores: Iterable[Chore]) -> bool:
-    """check if server database is different from user database"""
-    pass
-
-def fetch(users: Iterable[User], chores: Iterable[Chore]):
-    """get changes from server"""
-    pass
-
-def add_user(household: int, user: User, client: Optional[Client] = None):
+def add_user(user: User, client: Optional[Client] = None):
     """Add user to database"""
 
     if client is None:
         client = get_client()
 
     data = {
-        User_Col_Name.householdid.value: household,
+        User_Col_Name.householdid.value: user.householdid,
         User_Col_Name.username.value: user.username,
         User_Col_Name.fname.value: user.fname,
-        User_Col_Name.lname.value: user.lname
+        User_Col_Name.lname.value: user.lname, 
+        User_Col_Name.email.value: user.email,
+        User_Col_Name.phone.value: user.phone_num,
+        User_Col_Name.passhash.value: user.passhash
     }
 
     response = client.table("users").insert(data).execute()
@@ -184,7 +240,7 @@ def remove_user(user: User, client: Optional[Client] = None) -> bool:
     if not user_in_table.data:
         return False
     
-    client.table("notifications").delete().eq("userid", user.userid).execute()
+    # client.table("notifications").delete().eq("userid", user.userid).execute()
     client.table("chores").update({Chore_Col_Name.assignee.value: None}).eq(Chore_Col_Name.assignee.value, user.userid).execute()
     client.table("chores").update({Chore_Col_Name.requester.value: None}).eq(Chore_Col_Name.requester.value, user.userid).execute()
     client.table("users").delete().eq(User_Col_Name.userid.value, user.userid).execute()
@@ -247,13 +303,21 @@ def remove_chore(household: int, choreid: int, client: Optional[Client] = None):
 
     return response.data
 
-def update_chore(household: int, chore: Chore, client: Optional[Client] = None):
+def update_chore(
+    household: int,
+    choreid: int,
+    status: Optional[str] = None,
+    assignee_id: Optional[int] = None,
+    client: Optional[Client] = None
+):
     """
     Update chore data in database.
 
     Inputs:
         household: Household ID the chore belongs to.
-        chore: Updated Chore object.
+        choreid: Unique identifier of the chore.
+        status: Optional new status of the chore.
+        assignee_id: Optional new assignee user ID. Use None to unassign.
         client: Optional Supabase client.
 
     Output:
@@ -262,22 +326,19 @@ def update_chore(household: int, chore: Chore, client: Optional[Client] = None):
     if client is None:
         client = get_client()
 
-    data = {
-        Chore_Col_Name.cname.value: chore.name,
-        Chore_Col_Name.description.value: chore.description,
-        Chore_Col_Name.request_date.value: chore.request_date.isoformat(),
-        Chore_Col_Name.due_date.value: chore.due_date.isoformat(),
-        Chore_Col_Name.requester.value: chore.requester.userid,
-        Chore_Col_Name.assignee.value: chore.assignee.userid if chore.assignee else None,
-        Chore_Col_Name.status.value: chore.status.name,
-    }
+    data = {}
+
+    if status is not None:
+        data[Chore_Col_Name.status.value] = status
+
+    data[Chore_Col_Name.assignee.value] = assignee_id
 
     response = (
         client
         .table("chores")
         .update(data)
         .eq(Chore_Col_Name.householdid.value, household)
-        .eq(Chore_Col_Name.cname.value, chore.name)
+        .eq(Chore_Col_Name.choreid.value, choreid)
         .execute()
     )
 

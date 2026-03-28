@@ -1,23 +1,39 @@
-import os
-from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
-import pathlib
+from app.database import *
 
-# Load environment variables from .env file in root folder
-load_dotenv(dotenv_path=pathlib.Path(__file__).resolve().parent.parent / '.env')
+"""
+Module for testing the User module.
+Uses pytest (https://docs.pytest.org/en/latest/)
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+Contributors: Nathaniel Davis
+"""
 
-if DATABASE_URL is None:
-    raise ValueError("DATABASE_URL not found in .env")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+def test_add_get_remove_user():
+    
+    """Tests if add_user, get_user, and remove_user work. Ideally, these would be separate test functions, but 
+    they are needed for each others' tests."""
 
-# Test database connection by executing a simple query
-def test_db_connection():
-    try:
-        with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
-            return "Database connected successfully"
-    except Exception as e:
-        return f"Database connection failed: {str(e)}"
+    user = User(
+        username="bob123",
+        passhash="",
+        userid=-1,
+        fname="bob",
+        lname="bobbington",
+        email="bob@gmail.com"
+        # householdid=456 # need to implement adding households
+    )
+    
+    # make temp user
+    response = add_user(user)
+
+    # test if user was made
+    userid: int = response[0]["userid"]
+    user2 = get_user(userid)
+    assert user2
+    user.userid = user2.userid
+    assert user2 == user
+
+    # test if user was removed
+    remove_user(user2)
+    user2 = get_user(userid)
+    assert not user2
