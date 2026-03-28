@@ -243,7 +243,7 @@ def remove_user(user: User, client: Optional[Client] = None) -> bool:
     if not user_in_table.data:
         return False
     
-    client.table("notifications").delete().eq("userid", user.userid).execute()
+    # client.table("notifications").delete().eq("userid", user.userid).execute()
     client.table("chores").update({Chore_Col_Name.assignee.value: None}).eq(Chore_Col_Name.assignee.value, user.userid).execute()
     client.table("chores").update({Chore_Col_Name.requester.value: None}).eq(Chore_Col_Name.requester.value, user.userid).execute()
     client.table("users").delete().eq(User_Col_Name.userid.value, user.userid).execute()

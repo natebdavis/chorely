@@ -101,5 +101,5 @@ class User(CreateFromDict):
         }
     
     def __eq__(self, other: "User"):
-        return (self.username, self.passhash, self.userid, self.fname, self.lname, self.email, self.phone_num, self.householdid) ==\
-            (other.username, other.passhash, other.userid, other.fname, other.lname, other.email, other.phone_num, other.householdid)
+        return (self.username, self.passhash.strip(), self.userid, self.fname, self.lname, self.email, self.phone_num, self.householdid) ==\
+            (other.username, other.passhash.strip(), other.userid, other.fname, other.lname, other.email, other.phone_num, other.householdid)
