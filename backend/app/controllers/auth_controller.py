@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import List
+from app.utils import Token, create_access_token, authenticate_user
 
 """
 Module for managing Authentication Controller operations.
@@ -66,6 +68,31 @@ fake_users: List[TempUser] = [
     TempUser(username="nate", password="password123"),
     TempUser(username="gilligan", password="password123"),
 ]
+
+@router.post("/token", response_model=Token)
+def login_for_access_token(request: OAuth2PasswordRequestForm = Depends()):
+    """ 
+    Attempt to log a User into System and generate a session token if successful
+
+    Inputs:
+        request: Standard Login form with username and password
+
+    Outputs:
+        Token representing the current session of the user
+
+    Raises:
+        HTTPException(401) if the username or password is incorrect.
+    """
+
+    user = authenticate_user(request.username, request.password)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("/login", response_model=LoginResponse)

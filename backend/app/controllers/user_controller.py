@@ -1,12 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
-from typing import Optional, List
-from supabase import Client
+from fastapi import APIRouter, HTTPException
+from typing import List
 
-from app.database import get_users, get_user, add_user, get_client, is_username_available, is_email_available, is_phone_num_available, authenticate_user
-from app.user import User
-from app.utils import get_password_hash, create_access_token, Token
+from app.database import get_users, get_user, add_user, is_username_available, is_email_available, is_phone_num_available, authenticate_user
+from app.user import User, UserResponse, UserCreateRequest
+from app.utils import get_password_hash
 
 """
 Module for managing User Controller operations.
@@ -17,50 +14,6 @@ Contributors: Edmund Krajewski
 """
 
 router = APIRouter(tags=["users"])
-
-
-class UserCreateRequest(BaseModel):
-    """
-    Request body schema for creating a new User.
-
-    Inputs:
-        username: Username of the User.
-        fname: First name of the User.
-        lname: Last name of the User.
-        email: Email address of the User.
-        phone_num: Optional phone number.
-        passhash: Password hash for the User.
-
-    Output:
-        JSON body representing a User creation request.
-    """
-
-    username: str
-    fname: str
-    lname: str
-    email: str
-    phone_num: Optional[int] = None
-    passhash: str
-
-
-class UserResponse(BaseModel):
-    """
-    Response schema returned for User-related API requests.
-
-    Outputs:
-        username: Username of the User.
-        fname: First name of the User.
-        lname: Last name of the User.
-        email: Email address.
-        phone_num: Optional phone number.
-    """
-
-    username: str
-    fname: str
-    lname: str
-    email: Optional[str]
-    phone_num: Optional[int]
-
 
 @router.get("/users/{householdid}", response_model=List[UserResponse])
 def get_household_users(householdid: int):
@@ -160,14 +113,3 @@ def create_user(request: UserCreateRequest):
 
     return {"message": "User created successfully"}
 
-@router.post("/token", response_model=Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token = create_access_token(data={"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
