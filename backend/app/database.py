@@ -93,6 +93,9 @@ def get_user_by_username(username: str, client: Optional[Client] = None) -> Opti
     """Get a single `user` given a username.
     Output: A `User` Object created using the first entry matching the username"""
 
+    if client is None:
+        client = get_client()
+
     first = 0
     user_data = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
     if user_data[first]:
@@ -213,7 +216,6 @@ def add_user(user: User, client: Optional[Client] = None):
         client = get_client()
 
     data = {
-        User_Col_Name.householdid.value: user.householdid,
         User_Col_Name.username.value: user.username,
         User_Col_Name.fname.value: user.fname,
         User_Col_Name.lname.value: user.lname, 
