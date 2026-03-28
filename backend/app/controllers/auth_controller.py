@@ -99,28 +99,3 @@ def login_for_access_token(request: OAuth2PasswordRequestForm = Depends()):
 @router.get("/me", response_model=UserResponse, summary="Get my profile (protected)")
 def read_me(current_user: UserResponse = Depends(get_current_user)):
     return current_user
-
-
-@router.post("/test", response_model=LoginResponse)
-def login(request: LoginRequest):
-    """
-    Attempt to log a User into the system.
-
-    Inputs:
-        request: LoginRequest containing the username and password
-                 entered by the User.
-
-    Outputs:
-        LoginResponse indicating whether authentication succeeded.
-
-    Raises:
-        HTTPException(401) if the username or password is incorrect.
-    """
-    for user in fake_users:
-        if user.username == request.username and user.password == request.password:
-            return LoginResponse(
-                success=True,
-                message="Login successful"
-            )
-
-    raise HTTPException(status_code=401, detail="Invalid username or password")
