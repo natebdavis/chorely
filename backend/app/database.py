@@ -5,20 +5,17 @@ from dotenv import load_dotenv
 import pathlib
 from supabase import Client, create_client
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 
 from app.chore import Chore, Notification, Chore_Col_Name, Status
 from app.user import User, User_Col_Name
-from app.utils import CreateFromDict, load_env_variables, verify_password, TokenData
+from app.utils import CreateFromDict, load_env_variables, verify_password, TokenData, oauth2_scheme
 
 
 """
 Module for managing Database operations.
 Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 def get_client() -> Client:
     """Creates a client to connect with the Supabase Database.
@@ -128,12 +125,12 @@ def get_current_user(client: Client = Depends(get_client), token: str = Depends(
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         username: str = payload.get("sub")
-        TokenData(username=username)
+        token_data = TokenData(username=username)
         if username is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = get_user_by_username(username=username, client=client)
+    user = get_user_by_username(username=token_data.username, client=client)
     if user is None:
         raise credentials_exception
     return user

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import pathlib
 import os
 from pydantic import BaseModel
+from fastapi.security import OAuth2PasswordBearer
 
 class CreateFromDict(ABC): 
     '''Interface used for data classes that can be created using a dictionary.'''
@@ -15,6 +16,7 @@ class CreateFromDict(ABC):
         pass
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 def load_env_variables():
     """Loads environment variables from the .env file.

@@ -1,16 +1,56 @@
 from typing import Optional
 import re
-from collections.abc import Iterable
-from typing import Set
-from enum import Enum, auto
-from app.chore import Chore, Notification
+from enum import Enum
 from app.utils import CreateFromDict
+from pydantic import BaseModel
 
 
 """
 Module for managing User operations.
-Contributers: Gilligan Berlinski, Nathaniel Davis
+Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
+
+class UserCreateRequest(BaseModel):
+    """
+    Request body schema for creating a new User.
+
+    Inputs:
+        username: Username of the User.
+        fname: First name of the User.
+        lname: Last name of the User.
+        email: Email address of the User.
+        phone_num: Optional phone number.
+        passhash: Password hash for the User.
+
+    Output:
+        JSON body representing a User creation request.
+    """
+
+    username: str
+    fname: str
+    lname: str
+    email: str
+    phone_num: Optional[int] = None
+    passhash: str
+
+
+class UserResponse(BaseModel):
+    """
+    Response schema returned for User-related API requests.
+
+    Outputs:
+        username: Username of the User.
+        fname: First name of the User.
+        lname: Last name of the User.
+        email: Email address.
+        phone_num: Optional phone number.
+    """
+
+    username: str
+    fname: str
+    lname: str
+    email: Optional[str]
+    phone_num: Optional[int]
 
 class User_Col_Name(Enum):
     userid = "userid"
