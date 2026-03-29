@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
 
-from app.database import get_users, get_user, add_user, is_username_available, is_email_available, is_phone_num_available, authenticate_user
+from app.database import get_users, get_user, add_user, is_username_available, is_email_available, is_phone_num_available
 from app.user import User, UserResponse, UserCreateRequest
 from app.utils import get_password_hash
 
