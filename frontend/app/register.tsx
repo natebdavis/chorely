@@ -21,6 +21,7 @@ import { useState } from "react";
 
 export default function Register() {
   const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
   const [fname, setFname] = useState("");
   const [lname, setLname] = useState("");
   const [email, setEmail] = useState("");
@@ -30,10 +31,14 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
+  const isValidEmail = (email: string) => {return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);};
+  const emailValid = email.length === 0 || isValidEmail(email);
+
+  //const API_URL = "http://127.0.0.1:8000"; //use this if you are running the IOS simulator on mac
+  const API_URL = "http://10.0.0.7:8000";
+  //const API_URL = "https://chorely.onrender.com/chores/1";
 
   
-  const API_URL = "http://127.0.0.1:8000"; //use this if you are running the IOS simulator on mac
-
   //this makes the phone number appear like (XXX)-XXX-XXXX
     const formatPhoneNumber = (text: string) => {
     const cleaned = text.replace(/\D/g, ""); // remove non-numbers
@@ -68,6 +73,10 @@ export default function Register() {
       return;
     }
 
+    if (!emailValid) {
+      return;
+    }
+
     //this takes away the special characters from phone number for the backend 
     const cleanedPhone = phoneNum.replace(/\D/g, "");
 
@@ -89,10 +98,22 @@ export default function Register() {
 
       const data = await response.json();
 
+    console.log("RESPONSE STATUS:", response.status); //this is for testing
+    console.log("RESPONSE DATA:", data); //this is for testing
+
+     // if (!response.ok) {
+       // Alert.alert("Registration failed", data.detail || "Something went wrong.");
+        //return;
+      //}
       if (!response.ok) {
-        Alert.alert("Registration failed", data.detail || "Something went wrong.");
-        return;
-      }
+        if (data.detail === "Username not available") {
+           setUsernameError("Username is already taken");
+          } else {
+          Alert.alert("Registration failed", data.detail || "Something went wrong");
+           }
+          return;
+        }
+
 
       Alert.alert("Success", "Account created successfully!");
       router.push("/login");
@@ -161,9 +182,12 @@ export default function Register() {
                       placeholderTextColor="#666"
                       style={styles.input}
                       value={username}
-                      onChangeText={setUsername}
+                      //onChangeText={setUsername}
+                      onChangeText={(text) => {setUsername(text);setUsernameError(""); }}
                       autoCapitalize="none"
                       maxLength={35}/>
+
+                      {usernameError !== "" && (<Text style={styles.errorText}>{usernameError}</Text>)}
               </View>
               
               <View style={styles.inputWrapper}> 
@@ -177,6 +201,9 @@ export default function Register() {
                       onChangeText={setEmail}
                       autoCapitalize="none"
                       keyboardType="email-address"/>
+
+                      {email.length > 0 && !emailValid && (<Text style={styles.errorText}>Invalid email address</Text>)}
+                      {email.length > 0 && emailValid && (<Text style={styles.successText}>Valid email address</Text>)}
               </View>
               
 
