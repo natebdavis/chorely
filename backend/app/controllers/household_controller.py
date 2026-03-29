@@ -1,9 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import List
 
 from app.household import HouseholdCreateRequest, HouseholdResponse
-from app.database import get_users
+from app.database import household_exists, get_household_member_count
 
 """
 Module for managing Household Controller operations.
@@ -15,81 +13,24 @@ Contributors: Edmund Krajewski
 
 router = APIRouter(tags=["households"])
 
-class TempHousehold(BaseModel):
-    """
-    Temporary Household schema used for in-memory backend testing.
-
-    Inputs:
-        householdid: Unique identifier for the Household.
-        member_count: Number of Users currently in the Household.
-
-    Output:
-        Temporary Household object for testing storage and retrieval.
-    """
-    householdid: int
-    member_count: int
-
-"""
-Temporary in-memory storage for Households.
-
-This acts as a placeholder until persistent database-backed
-Household storage is implemented.
-"""
-fake_households: List[TempHousehold] = [
-    TempHousehold(householdid=1, member_count=2),
-    TempHousehold(householdid=2, member_count=4),
-]
 
 @router.get("/households/{householdid}", response_model=HouseholdResponse)
 def get_household(householdid: int):
-    """
-    Retrieve a single Household by householdid.
+    if not household_exists(householdid):
+        raise HTTPException(status_code=404, detail="Household not found")
 
-    Inputs:
-        householdid: Unique identifier of the Household to retrieve.
-
-    Outputs:
-        HouseholdResponse for the requested Household.
-
-    Raises:
-        HTTPException(404) if the Household does not exist.
-    """
-    for household in fake_households:
-        if household.householdid == householdid:
-            return HouseholdResponse(
-                householdid=household.householdid,
-                member_count=household.member_count,
-            )
-
-    raise HTTPException(status_code=404, detail="Household not found")
+    return HouseholdResponse(
+        householdid=householdid,
+        member_count=get_household_member_count(householdid),
+    )
 
 
 @router.post("/households", response_model=HouseholdResponse)
 def create_household(request: HouseholdCreateRequest):
-    """
-    Create a new Household.
-
-    Inputs:
-        request: HouseholdCreateRequest containing the new Household ID.
-
-    Outputs:
-        HouseholdResponse representing the newly created Household.
-
-    Raises:
-        HTTPException(400) if the Household ID already exists.
-    """
-    for household in fake_households:
-        if household.householdid == request.householdid:
-            raise HTTPException(status_code=400, detail="Household already exists")
-
-    new_household = TempHousehold(
-        householdid=request.householdid,
-        member_count=0,
-    )
-
-    fake_households.append(new_household)
+    if household_exists(request.householdid):
+        raise HTTPException(status_code=400, detail="Household already exists")
 
     return HouseholdResponse(
-        householdid=new_household.householdid,
-        member_count=new_household.member_count,
+        householdid=request.householdid,
+        member_count=0,
     )
