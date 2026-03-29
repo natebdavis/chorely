@@ -2,7 +2,8 @@ from typing import Optional
 import re
 from enum import Enum
 from app.utils import CreateFromDict
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from typing import Union
 
 
 """
@@ -19,7 +20,7 @@ class UserCreateRequest(BaseModel):
         fname: First name of the User.
         lname: Last name of the User.
         email: Email address of the User.
-        phone_num: Optional phone number.
+        phone_num: Phone number of the User.
         password: Password hash for the User.
 
     Output:
@@ -29,8 +30,8 @@ class UserCreateRequest(BaseModel):
     username: str
     fname: str
     lname: str
-    email: str
-    phone_num: Optional[int] = None
+    email: EmailStr
+    phone_num: Union[int, None] = None
     password: str
 
 
@@ -46,11 +47,45 @@ class UserResponse(BaseModel):
         phone_num: Optional phone number.
     """
 
+    userid: Optional[int] = None # for now making None
     username: str
     fname: str
     lname: str
-    email: Optional[str]
-    phone_num: Optional[int]
+    email: Union[EmailStr, None] = None
+    phone_num: Union[int, None] = None
+
+class UserInUpdate(BaseModel):
+    """
+    Request body schema for updating an existing User.
+
+    Inputs:
+        userid: Unique identifier for the User to be updated.
+        username: Updated username of the User.
+        password: Updated password for User. (Password will be hashed before storage)
+        fname: Updated first name of the User.
+        lname: Updated last name of the User.
+        email: Updated email address of the User.
+        phone_num: Updated optional phone number.
+    """
+
+    userid: int
+    username: Union[str, None] = None
+    password: Union[str, None] = None
+    fname: Union[str, None] = None
+    lname: Union[str, None] = None
+    email: Union[EmailStr, None] = None
+    phone_num: Union[int, None] = None
+
+class UserWithToken(BaseModel):
+    """
+    Response schema for User-related API requests that include an authentication token.
+    
+    Outputs:
+        Token representing the current session of the user.
+        Type of the token (e.g., "bearer").
+    """
+    access_token: str
+    token_type: str
 
 class User_Col_Name(Enum):
     userid = "userid"
