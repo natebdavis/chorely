@@ -3,7 +3,7 @@ logs
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
+
 
 # Python cache
 __pycache__/
@@ -62,6 +62,7 @@ node_modules/
 
 # dotenv environment variables file
 .env
+expo-env.d.ts
 
 # dataconnect generated files
 .dataconnect

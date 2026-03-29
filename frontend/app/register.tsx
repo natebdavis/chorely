@@ -33,7 +33,7 @@ export default function Register() {
 
   
   const API_URL = "http://127.0.0.1:8000"; //use this if you are running the IOS simulator on mac
-  
+
   //this makes the phone number appear like (XXX)-XXX-XXXX
     const formatPhoneNumber = (text: string) => {
     const cleaned = text.replace(/\D/g, ""); // remove non-numbers
