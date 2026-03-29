@@ -1,8 +1,5 @@
 from collections.abc import Iterable
 from typing import Optional
-import os
-from dotenv import load_dotenv
-import pathlib
 from supabase import Client, create_client
 from fastapi import Depends, HTTPException, status
 from jose import JWTError, jwt
@@ -86,7 +83,7 @@ def is_phone_num_available(phone_num: int, client: Optional[Client] = None) -> b
     if client is None:
         client = get_client()
 
-    response = _select_all_where_equals_query("users", User_Col_Name.phone_num.value, phone_num, client)
+    response = _select_all_where_equals_query("users", User_Col_Name.phone.value, phone_num, client)
     return not response
 
 def get_user_by_username(username: str, client: Optional[Client] = None) -> Optional[User]:
