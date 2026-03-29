@@ -128,6 +128,7 @@ class User(CreateFromDict):
     def from_dict(cls, user_dict: dict):
         """Alternate Constructor for `User`
         Input: Dictionary with all values assoicated with a `User`"""
+        userid = user_dict[User_Col_Name.userid.value]
         username = user_dict[User_Col_Name.username.value]
         passhash = user_dict[User_Col_Name.passhash.value]
         userid = user_dict[User_Col_Name.userid.value]
@@ -168,6 +169,7 @@ class User(CreateFromDict):
     def createResponseModel(self) -> UserResponse:
         """Create a `UserResponse` model from the `User` object."""
         return {
+            "userid": self.userid,
             "username": self.username,
             "fname": self.fname,
             "lname": self.lname,

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
-from app.database import get_users, get_user, add_user, is_username_available, is_email_available, is_phone_num_available
+from app.database import get_users, get_user, add_user, is_username_available, is_email_available, is_phone_num_available, get_current_user, get_householdid
 from app.user import User, UserResponse, UserCreateRequest
 from app.utils import get_password_hash
 
@@ -15,8 +15,8 @@ Contributors: Edmund Krajewski
 
 router = APIRouter(tags=["users"])
 
-@router.get("/users/{householdid}", response_model=List[UserResponse])
-def get_household_users(householdid: int):
+@router.get("/users/household", response_model=List[UserResponse])
+def get_household_users(current_user: UserResponse = Depends(get_current_user)):
     """
     Retrieve all Users belonging to a household.
 
@@ -30,6 +30,9 @@ def get_household_users(householdid: int):
         HTTPException(404) if no users exist for that household.
     """
 
+    userid = current_user["userid"]
+    householdid = get_householdid(userid=userid)
+
     users = get_users(householdid)
 
     if not users:
@@ -37,6 +40,7 @@ def get_household_users(householdid: int):
 
     return [
         UserResponse(
+            userid=u.userid,
             username=u.username,
             fname=u.fname,
             lname=u.lname,
@@ -75,6 +79,9 @@ def get_single_user(userid: int):
         phone_num=user.phone_num,
     )
 
+@router.get("/me", response_model=UserResponse, summary="Get my profile (protected)")
+def read_me(current_user: UserResponse = Depends(get_current_user)):
+    return current_user
 
 @router.post("/users")
 def create_user(request: UserCreateRequest):
