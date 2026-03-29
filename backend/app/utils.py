@@ -16,7 +16,7 @@ class CreateFromDict(ABC):
         pass
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def load_env_variables():
     """Loads environment variables from the .env file.

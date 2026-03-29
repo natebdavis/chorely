@@ -395,6 +395,13 @@ def get_all_completed_chores(userid: int, client: Optional[Client] = None) -> Op
 
     return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
 
+def get_householdid(userid: int, client: Optional[Client] = None) -> Optional[int]:
+    user = get_user(userid=userid)
+    if user:
+        return user.householdid
+    else:
+        return None
+
 
 def add_notification(household: int, chore: Chore, notification: Notification):
     """add notification to database"""

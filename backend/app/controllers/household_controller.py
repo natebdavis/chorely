@@ -2,6 +2,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List
 
+from app.household import HouseholdCreateRequest, HouseholdResponse
+from app.database import get_users
+
 """
 Module for managing Household Controller operations.
 Handles HTTP requests related to Households and exposes API endpoints
@@ -11,32 +14,6 @@ Contributors: Edmund Krajewski
 """
 
 router = APIRouter(tags=["households"])
-
-
-class HouseholdCreateRequest(BaseModel):
-    """
-    Request body schema for creating a new Household.
-
-    Inputs:
-        householdid: Unique identifier for the Household.
-
-    Output:
-        JSON body representing a Household creation request.
-    """
-    householdid: int
-
-
-class HouseholdResponse(BaseModel):
-    """
-    Response schema returned for Household-related API requests.
-
-    Outputs:
-        householdid: Unique identifier for the Household.
-        member_count: Number of Users currently in the Household.
-    """
-    householdid: int
-    member_count: int
-
 
 class TempHousehold(BaseModel):
     """
@@ -52,7 +29,6 @@ class TempHousehold(BaseModel):
     householdid: int
     member_count: int
 
-
 """
 Temporary in-memory storage for Households.
 
@@ -63,27 +39,6 @@ fake_households: List[TempHousehold] = [
     TempHousehold(householdid=1, member_count=2),
     TempHousehold(householdid=2, member_count=4),
 ]
-
-
-@router.get("/households", response_model=List[HouseholdResponse])
-def get_households():
-    """
-    Retrieve all Households currently stored.
-
-    Inputs:
-        None
-
-    Outputs:
-        List of all Households currently in the system.
-    """
-    return [
-        HouseholdResponse(
-            householdid=household.householdid,
-            member_count=household.member_count,
-        )
-        for household in fake_households
-    ]
-
 
 @router.get("/households/{householdid}", response_model=HouseholdResponse)
 def get_household(householdid: int):
