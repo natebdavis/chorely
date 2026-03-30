@@ -158,6 +158,23 @@ def get_users(householdid: int, client: Optional[Client] = None) -> Optional[Ite
     # The data is in response.data
     return _get_data_type_list_from_response(data, User)
 
+def get_chore(choreid: int, client: Optional[Client] = None) -> Optional[Chore]:
+    """Get a single `chore` given a choreid.
+    Output: A `Chore` Object created using the first entry matching the choreid"""
+
+    first = 0
+    chore_data = _select_all_where_equals_query("chores", Chore_Col_Name.choreid.value, choreid, client)
+    if chore_data and chore_data[first]:
+        userid_requester = chore_data[first][Chore_Col_Name.requester.value]
+        userid_assignee = chore_data[first][Chore_Col_Name.assignee.value]
+        requester = get_user(userid_requester, client)
+        assignee = get_user(userid_assignee, client) if userid_assignee else None
+        chore_data[first][Chore_Col_Name.requester.value] = requester
+        chore_data[first][Chore_Col_Name.assignee.value] = assignee
+        return Chore.from_dict(chore_data[first])
+    else:
+        return None
+
 def get_chores(householdid: int, client: Optional[Client] = None, 
                users: Optional[Iterable[User]] = None) -> Optional[Iterable[Chore]]:
     """Get collection of all `chores` in household.

@@ -31,7 +31,7 @@ def get_household_users(current_user: UserResponse = Depends(get_current_user)):
     """
 
     userid = current_user["userid"]
-    householdid = get_householdid(userid=userid)
+    householdid = current_user["householdid"]
 
     if not householdid:
         raise HTTPException(status_code=404, detail="User has not joined a household")
