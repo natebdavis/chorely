@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 
 from app.household import HouseholdCreateRequest, HouseholdResponse
-from app.database import household_exists, get_household_member_count, get_current_user, get_householdid
+from app.database import household_exists, get_household_member_count, get_current_user, get_householdid, join_household, create_household_db
 from app.user import UserResponse
 
 """
@@ -40,11 +40,13 @@ def get_household(householdid: int):
 
 
 @router.post("/households", response_model=HouseholdResponse)
-def create_household(request: HouseholdCreateRequest):
-    if household_exists(request.householdid):
-        raise HTTPException(status_code=400, detail="Household already exists")
+def create_household(current_user: UserResponse = Depends(get_current_user)):
+
+    new_household = create_household_db()
+    householdid = new_household[0]["householdid"]
+    join_household(current_user["userid"], householdid)
 
     return HouseholdResponse(
-        householdid=request.householdid,
-        member_count=0,
+        householdid=householdid,
+        member_count=1,
     )

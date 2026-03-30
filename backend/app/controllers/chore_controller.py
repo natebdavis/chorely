@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 import datetime as DT
-
+from app.database import get_current_user
+from app.user import UserResponse
 from app import database
 from app.chore import Chore, ChoreCreateRequest, ChoreDeleteRequest, ChoreResponse, ChoreUpdateRequest
 
@@ -86,11 +87,17 @@ def update_chore(choreid: int, payload: ChoreUpdateRequest):
         )
 
 @router.get("/{householdid}", response_model=list[ChoreResponse])
-def get_household_chores(householdid: int):
+def get_household_chores(householdid: int, current_user: UserResponse = Depends(get_current_user)):
     """
     Retrieve all chores for a given household.
     """
     try:
+        if current_user["householdid"] != householdid:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is not authorized to view chores for this household"
+            )
+
         chores = database.get_chores(householdid)
 
         if not chores:

@@ -15,7 +15,8 @@ class HouseholdCreateRequest(BaseModel):
     """
     Request body schema for creating a new Household.
     """
-    householdid: int
+    # householdid: int
+    pass
 
 
 class HouseholdJoinRequest(BaseModel):

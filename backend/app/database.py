@@ -482,6 +482,20 @@ def get_household_member_count(householdid: int, client: Optional[Client] = None
     members = get_users(householdid, client)
     return len(members) if members else 0
 
+def create_household_db(client: Optional[Client] = None):
+    """create household in database"""
+    if client is None:
+        client = get_client()
+        
+    response = (
+        client
+        .table("households")
+        .insert({})
+        .execute()
+    )
+
+    return response.data
+
 def add_notification(household: int, chore: Chore, notification: Notification):
     """add notification to database"""
     pass
