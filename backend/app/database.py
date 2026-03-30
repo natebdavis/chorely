@@ -95,10 +95,10 @@ def get_user_by_username(username: str, client: Optional[Client] = None) -> Opti
 
     first = 0
     user_data = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
-    if user_data[first]:
-        return User.from_dict(user_data[first])
-    else:
+    if not user_data:
         return None
+    else:
+        return User.from_dict(user_data[first])
     
 def authenticate_user(username: str, password: str, client: Optional[Client] = None) -> Optional[User]:
     """Authenticate a user given a username and password.

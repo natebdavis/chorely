@@ -33,10 +33,13 @@ def get_household_users(current_user: UserResponse = Depends(get_current_user)):
     userid = current_user["userid"]
     householdid = get_householdid(userid=userid)
 
+    if not householdid:
+        raise HTTPException(status_code=404, detail="User has not joined a household")
+
     users = get_users(householdid)
 
     if not users:
-        raise HTTPException(status_code=404, detail="No users found")
+        raise HTTPException(status_code=404, detail="No users in household found")
 
     return [
         UserResponse(
