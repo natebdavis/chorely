@@ -95,10 +95,10 @@ def get_user_by_username(username: str, client: Optional[Client] = None) -> Opti
 
     first = 0
     user_data = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
-    if user_data[first]:
-        return User.from_dict(user_data[first])
-    else:
+    if not user_data:
         return None
+    else:
+        return User.from_dict(user_data[first])
     
 def authenticate_user(username: str, password: str, client: Optional[Client] = None) -> Optional[User]:
     """Authenticate a user given a username and password.
@@ -157,6 +157,23 @@ def get_users(householdid: int, client: Optional[Client] = None) -> Optional[Ite
 
     # The data is in response.data
     return _get_data_type_list_from_response(data, User)
+
+def get_chore(choreid: int, client: Optional[Client] = None) -> Optional[Chore]:
+    """Get a single `chore` given a choreid.
+    Output: A `Chore` Object created using the first entry matching the choreid"""
+
+    first = 0
+    chore_data = _select_all_where_equals_query("chores", Chore_Col_Name.choreid.value, choreid, client)
+    if chore_data and chore_data[first]:
+        userid_requester = chore_data[first][Chore_Col_Name.requester.value]
+        userid_assignee = chore_data[first][Chore_Col_Name.assignee.value]
+        requester = get_user(userid_requester, client)
+        assignee = get_user(userid_assignee, client) if userid_assignee else None
+        chore_data[first][Chore_Col_Name.requester.value] = requester
+        chore_data[first][Chore_Col_Name.assignee.value] = assignee
+        return Chore.from_dict(chore_data[first])
+    else:
+        return None
 
 def get_chores(householdid: int, client: Optional[Client] = None, 
                users: Optional[Iterable[User]] = None) -> Optional[Iterable[Chore]]:
@@ -402,6 +419,99 @@ def get_householdid(userid: int, client: Optional[Client] = None) -> Optional[in
     else:
         return None
 
+def household_exists(householdid: int, client: Optional[Client] = None) -> bool:
+    """Check if a household exists by seeing if any user belongs to it."""
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table("users")
+        .select(User_Col_Name.userid.value)
+        .eq(User_Col_Name.householdid.value, householdid)
+        .limit(1)
+        .execute()
+    )
+
+    return bool(response.data)
+
+def get_household_members(householdid: int, client: Optional[Client] = None) -> Optional[Iterable[User]]:
+    """Get all users belonging to a household."""
+    return get_users(householdid, client)
+
+def join_household(userid: int, householdid: int, client: Optional[Client] = None):
+    """Assign a user to a household."""
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table("users")
+        .update({User_Col_Name.householdid.value: householdid})
+        .eq(User_Col_Name.userid.value, userid)
+        .execute()
+    )
+
+    return response.data
+
+def leave_household(userid: int, client: Optional[Client] = None):
+    """Remove a user from their current household by setting householdid to null."""
+    if client is None:
+        client = get_client()
+
+    user = get_user(userid, client)
+    if not user:
+        return None
+
+    old_householdid = user.householdid
+
+    response = (
+        client
+        .table("users")
+        .update({User_Col_Name.householdid.value: None})
+        .eq(User_Col_Name.userid.value, userid)
+        .execute()
+    )
+
+    if old_householdid is not None:
+        delete_household_if_empty(old_householdid, client)
+
+    return response.data
+
+def delete_household_if_empty(householdid: int, client: Optional[Client] = None) -> bool:
+    """
+    If no users remain in a household, clean up related chores.
+    Since there is no standalone households table yet, this means removing
+    chores associated with that household.
+    """
+    if client is None:
+        client = get_client()
+
+    members = get_users(householdid, client)
+    if members:
+        return False
+
+    client.table("chores").delete().eq(Chore_Col_Name.householdid.value, householdid).execute()
+    return True
+
+def get_household_member_count(householdid: int, client: Optional[Client] = None) -> int:
+    """Return number of users in a household."""
+    members = get_users(householdid, client)
+    return len(members) if members else 0
+
+def create_household_db(client: Optional[Client] = None):
+    """create household in database"""
+    if client is None:
+        client = get_client()
+        
+    response = (
+        client
+        .table("households")
+        .insert({})
+        .execute()
+    )
+
+    return response.data
 
 def add_notification(household: int, chore: Chore, notification: Notification):
     """add notification to database"""
