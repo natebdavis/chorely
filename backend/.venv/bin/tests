@@ -1,0 +1,8 @@
+#!/bin/sh
+'''exec' "/Users/christianespinal/Desktop/untitled folder 2/chorely/backend/.venv/bin/python" "$0" "$@"
+' '''
+import sys
+from poetry_scripts import run_tests
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(run_tests())
