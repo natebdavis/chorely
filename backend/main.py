@@ -6,7 +6,6 @@ from app.controllers.auth_controller import router as auth_router
 from app.controllers.user_controller import router as user_router
 from app.controllers.household_controller import router as household_router
 from app.controllers.notification_controller import router as notification_router
-from app.controllers.membership_controller import router as membership_router
 
 app = FastAPI()
 
@@ -23,7 +22,7 @@ app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(household_router)
 app.include_router(notification_router)
-app.include_router(membership_router)
+
 
 @app.get("/")
 def root():
@@ -32,11 +31,4 @@ def root():
 # Test Database Connection
 # @app.get("/test-db")
 # def test_database():
-#     return {"message": test_db_connection()}
-
-# Tests if backend is running and can connect to the database.
-def test_backend():
-    message = root()["message"]
-    print(message)  # Print backend test message on startup
-    message = test_database()["message"]
-    print(message)  # Print DB connection result on startup
+#     return {"message": test_db_connection()

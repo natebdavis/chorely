@@ -5,7 +5,7 @@ import pytz
 from app.database import get_current_user
 from app.user import UserResponse
 from app import database
-from app.chore import Chore, ChoreCreateRequest, ChoreDeleteRequest, ChoreResponse, ChoreUpdateRequest
+from app.chore import Chore, ChoreCreateRequest, ChoreDeleteRequest, ChoreResponse, ChoreUpdateRequest, Chore_Col_Name
 
 """
 Module for managing Chore Controller operations.
@@ -227,7 +227,8 @@ def create_chore(payload: ChoreCreateRequest, current_user: UserResponse = Depen
             request_date=None,
         )
 
-        database.add_chore(householdid, chore)
+        chorelist = database.add_chore(householdid, chore)
+        chore = Chore.from_dict(chorelist[0])
 
         return ChoreResponse(**chore.createBaseModel())
 
