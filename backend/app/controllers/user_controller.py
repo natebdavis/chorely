@@ -13,48 +13,9 @@ for creating and retrieving Users in the system.
 Contributors: Edmund Krajewski
 """
 
-router = APIRouter(tags=["users"])
+router = APIRouter(tags=["users"], prefix="/user")
 
-@router.get("/users/household", response_model=List[UserResponse])
-def get_household_users(current_user: UserResponse = Depends(get_current_user)):
-    """
-    Retrieve all Users belonging to a household.
-
-    Inputs:
-        householdid: Identifier of the household.
-
-    Outputs:
-        List of UserResponse objects.
-
-    Raises:
-        HTTPException(404) if no users exist for that household.
-    """
-
-    userid = current_user["userid"]
-    householdid = current_user["householdid"]
-
-    if not householdid:
-        raise HTTPException(status_code=404, detail="User has not joined a household")
-
-    users = get_users(householdid)
-
-    if not users:
-        raise HTTPException(status_code=404, detail="No users in household found")
-
-    return [
-        UserResponse(
-            userid=u.userid,
-            username=u.username,
-            fname=u.fname,
-            lname=u.lname,
-            email=u.email,
-            phone_num=u.phone_num,
-        )
-        for u in users
-    ]
-
-
-@router.get("/user/{userid}", response_model=UserResponse)
+@router.get("/{userid}", response_model=UserResponse)
 def get_single_user(userid: int):
     """
     Retrieve a single User by userid.
@@ -75,6 +36,7 @@ def get_single_user(userid: int):
         raise HTTPException(status_code=404, detail="User not found")
 
     return UserResponse(
+        userid=user.userid,
         username=user.username,
         fname=user.fname,
         lname=user.lname,
@@ -82,11 +44,21 @@ def get_single_user(userid: int):
         phone_num=user.phone_num,
     )
 
-@router.get("/me", response_model=UserResponse, summary="Get my profile (protected)")
+@router.get("", response_model=UserResponse, summary="Get my profile (protected)")
 def read_me(current_user: UserResponse = Depends(get_current_user)):
-    return current_user
+    userid = current_user["userid"]
+    user = get_user(userid)
+    return UserResponse(
+        userid=user.userid,
+        username=user.username,
+        fname=user.fname,
+        lname=user.lname,
+        email=user.email,
+        phone_num=user.phone_num,
+        householdid=user.householdid
+    )
 
-@router.post("/users")
+@router.post("/create")
 def create_user(request: UserCreateRequest):
     """
     Create a new User in the database.
