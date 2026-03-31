@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.utils import Token, create_access_token
-from app.database import get_current_user, authenticate_user
+from app.database import authenticate_user, is_username_available
 from app.user import UserResponse
 
 """
@@ -28,6 +28,9 @@ def login_for_access_token(request: OAuth2PasswordRequestForm = Depends()):
     Raises:
         HTTPException(401) if the username or password is incorrect.
     """
+
+    if is_username_available(request.username):
+        raise HTTPException(status_code=401, detail="No user with that username exists.")
 
     user = authenticate_user(request.username, request.password)
     if not user:
