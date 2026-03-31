@@ -36,23 +36,13 @@ class UserCreateRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
-    """
-    Response schema returned for User-related API requests.
-
-    Outputs:
-        username: Username of the User.
-        fname: First name of the User.
-        lname: Last name of the User.
-        email: Email address.
-        phone_num: Optional phone number.
-    """
-
-    userid: Optional[int] = None # for now making None
+    userid: Optional[int] = None
     username: str
     fname: str
     lname: str
     email: Union[EmailStr, None] = None
     phone_num: Union[int, None] = None
+    householdid: Optional[int] = None
 
 class UserInUpdate(BaseModel):
     """
@@ -167,14 +157,14 @@ class User(CreateFromDict):
          return True if valid_email else False
     
     def createResponseModel(self) -> UserResponse:
-        """Create a `UserResponse` model from the `User` object."""
         return {
             "userid": self.userid,
             "username": self.username,
             "fname": self.fname,
             "lname": self.lname,
             "email": self.email,
-            "phone_num": self.phone_num
+            "phone_num": self.phone_num,
+            "householdid": self.householdid
         }
     
     def __eq__(self, other: "User"):

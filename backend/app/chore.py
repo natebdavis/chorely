@@ -20,8 +20,6 @@ class ChoreCreateRequest(BaseModel):
     Request body schema for creating a new Chore.
 
     Inputs:
-        householdid: Unique identifier for the Household.
-        requester_id: Unique identifier of the User requesting the Chore.
         name: Name of the Chore.
         description: Description of the Chore.
         due_date: Datetime string representing when the Chore is due.
@@ -30,8 +28,7 @@ class ChoreCreateRequest(BaseModel):
     Output:
         JSON body representing a Chore creation request.
     """
-    householdid: int
-    requester_id: int
+
     name: str = Field(..., min_length=1, max_length=50)
     description: str = Field(..., min_length=1, max_length=3000)
     due_date: str
@@ -42,14 +39,12 @@ class ChoreUpdateRequest(BaseModel):
     Request body schema for updating a Chore.
 
     Inputs:
-        householdid: Unique identifier for the Household.
         status: Optional new status of the Chore.
         assignee_id: Optional new assignee user ID. Use null to unassign.
 
     Output:
         JSON body representing a Chore update request.
     """
-    householdid: int
     status: Optional[str] = None
     assignee_id: Optional[int] = None
 
@@ -58,13 +53,11 @@ class ChoreDeleteRequest(BaseModel):
     Request body schema for deleting a Chore.
 
     Inputs:
-        householdid: Unique identifier for the Household.
         choreid: Unique identifier of the Chore to delete.
 
     Output:
         JSON body representing a Chore deletion request.
     """
-    householdid: int
     choreid: int
 
 
@@ -127,6 +120,7 @@ class Chore(CreateFromDict):
     due_date: DT.datetime
     requester: "User"
     notifications: Iterable[Notification]
+    householdid: int
 
     def __init__(
         self,
@@ -137,7 +131,8 @@ class Chore(CreateFromDict):
         choreid: Optional[int] = None,
         assignee: Optional["User"] = None,
         request_date: Optional[DT.datetime] = None,
-        status: Optional[Status] = None
+        status: Optional[Status] = None,
+        householdid: Optional[int] = None
     ):
         """
         Constructor for Chore Class.
@@ -158,6 +153,7 @@ class Chore(CreateFromDict):
         self.due_date = due_date
         self.requester = requester
         self._assignee = assignee
+        self.householdid = householdid
 
         if status is not None:
             self._status = status
@@ -181,6 +177,7 @@ class Chore(CreateFromDict):
         requester = chore_dict[Chore_Col_Name.requester.value]
         assignee = chore_dict[Chore_Col_Name.assignee.value]
         status = Status[chore_dict[Chore_Col_Name.status.value]]
+        householdid = chore_dict[Chore_Col_Name.householdid.value]
 
         return cls(
             name=name,
@@ -190,7 +187,8 @@ class Chore(CreateFromDict):
             choreid=choreid,
             assignee=assignee,
             request_date=request_date,
-            status=status
+            status=status,
+            householdid=householdid
         )
 
     @property
@@ -232,4 +230,5 @@ class Chore(CreateFromDict):
             "due_date": int(self.due_date.timestamp()) if self.due_date else None,
             "assignee": assignee,
             "status": self.status.name if self.status else None,
+            "householdid": self.householdid
         }

@@ -1,95 +1,139 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 
 from app.household import HouseholdCreateRequest, HouseholdResponse
-from app.database import get_users
+from app.database import household_exists, get_household_member_count, get_current_user, get_householdid, join_household, create_household_db, get_users
+from app.user import UserResponse
+
+from app.database import join_household, leave_household, get_user, get_householdid, get_current_user, get_household_member_count
+from app.household import HouseholdJoinRequest, HouseholdLeaveRequest, MembershipResponse
 
 """
 Module for managing Household Controller operations.
 Handles HTTP requests related to Households and exposes API endpoints
 for creating and retrieving household information.
 
-Contributors: Edmund Krajewski
+Contributors: Edmund Krajewski, Gilligan Berlinski
 """
 
-router = APIRouter(tags=["households"])
+router = APIRouter(tags=["households"], prefix="/households")
 
-class TempHousehold(BaseModel):
+@router.get("/members", response_model=List[UserResponse])
+def get_household_users(current_user: UserResponse = Depends(get_current_user)):
     """
-    Temporary Household schema used for in-memory backend testing.
+    Retrieve all Users belonging to a household.
 
     Inputs:
-        householdid: Unique identifier for the Household.
-        member_count: Number of Users currently in the Household.
-
-    Output:
-        Temporary Household object for testing storage and retrieval.
-    """
-    householdid: int
-    member_count: int
-
-"""
-Temporary in-memory storage for Households.
-
-This acts as a placeholder until persistent database-backed
-Household storage is implemented.
-"""
-fake_households: List[TempHousehold] = [
-    TempHousehold(householdid=1, member_count=2),
-    TempHousehold(householdid=2, member_count=4),
-]
-
-@router.get("/households/{householdid}", response_model=HouseholdResponse)
-def get_household(householdid: int):
-    """
-    Retrieve a single Household by householdid.
-
-    Inputs:
-        householdid: Unique identifier of the Household to retrieve.
+        householdid: Identifier of the household.
 
     Outputs:
-        HouseholdResponse for the requested Household.
+        List of UserResponse objects.
 
     Raises:
-        HTTPException(404) if the Household does not exist.
+        HTTPException(404) if no users exist for that household.
     """
-    for household in fake_households:
-        if household.householdid == householdid:
-            return HouseholdResponse(
-                householdid=household.householdid,
-                member_count=household.member_count,
-            )
 
-    raise HTTPException(status_code=404, detail="Household not found")
+    userid = current_user["userid"]
+    householdid = current_user["householdid"]
 
+    if not householdid:
+        raise HTTPException(status_code=404, detail="User has not joined a household")
 
-@router.post("/households", response_model=HouseholdResponse)
-def create_household(request: HouseholdCreateRequest):
-    """
-    Create a new Household.
+    users = get_users(householdid)
 
-    Inputs:
-        request: HouseholdCreateRequest containing the new Household ID.
+    if not users:
+        raise HTTPException(status_code=404, detail="No users in household found")
 
-    Outputs:
-        HouseholdResponse representing the newly created Household.
+    return [
+        UserResponse(
+            userid=u.userid,
+            username=u.username,
+            fname=u.fname,
+            lname=u.lname,
+            email=u.email,
+            phone_num=u.phone_num,
+        )
+        for u in users
+    ]
 
-    Raises:
-        HTTPException(400) if the Household ID already exists.
-    """
-    for household in fake_households:
-        if household.householdid == request.householdid:
-            raise HTTPException(status_code=400, detail="Household already exists")
+@router.get("", response_model=HouseholdResponse)
+def get_households(current_user: UserResponse = Depends(get_current_user)):
 
-    new_household = TempHousehold(
-        householdid=request.householdid,
-        member_count=0,
+    userid = current_user["userid"]
+    householdid = get_householdid(userid=userid)
+
+    if not householdid:
+        raise HTTPException(status_code=404, detail="User has not joined a household")
+    
+    return HouseholdResponse(
+        householdid=householdid,
+        member_count=get_household_member_count(householdid),
     )
 
-    fake_households.append(new_household)
+@router.post("", response_model=HouseholdResponse)
+def create_household(current_user: UserResponse = Depends(get_current_user)):
+
+    householdid = get_householdid(current_user["userid"])
+
+    if householdid:
+        raise HTTPException(status_code=404, detail="User is already apart of an existing household.")
+
+    new_household = create_household_db()
+    householdid = new_household[0]["householdid"]
+    join_household(current_user["userid"], householdid)
 
     return HouseholdResponse(
-        householdid=new_household.householdid,
-        member_count=new_household.member_count,
+        householdid=householdid,
+        member_count=1,
     )
+
+@router.post("/join")
+def create_membership(request: HouseholdJoinRequest, current_user: UserResponse = Depends(get_current_user)):
+    """Allow a user to add a user to their household.
+    Inputs:
+        request: HouseholdJoinRequest containing the userid of the user being added and the householdid of the household they are being added to."""
+    
+    current_userid = current_user["userid"]
+    current_householdid = get_householdid(userid=current_userid)
+
+    if not current_householdid:
+        raise HTTPException(status_code=400, detail="User must be a member of the household to add another user to it.")
+
+    member_count = get_household_member_count(current_householdid)
+    if member_count >= 10:  # Assuming a maximum of 10 members per household
+        raise HTTPException(status_code=400, detail="Household has reached maximum member limit")
+
+    user = get_user(request.userid)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.householdid == current_householdid:
+        raise HTTPException(status_code=400, detail="User already belongs to this household")
+    
+    if user.householdid is not None:
+        raise HTTPException(status_code=400, detail="User already belongs to a different household")
+
+    join_household(request.userid, current_householdid)
+    return {"message": "User joined household successfully"}
+
+
+@router.delete("/leave")
+def delete_membership(request: HouseholdLeaveRequest, current_user: UserResponse = Depends(get_current_user)):
+    """Allow a user to leave their current household.
+    Inputs:
+        request: HouseholdLeaveRequest containing the userid of the user leaving the household."""
+
+    current_userid = current_user["userid"]
+
+    if current_userid != request.userid:
+        raise HTTPException(status_code=400, detail="Unauthorized user attempting to remove another user from household.")
+
+    user = get_user(request.userid)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.householdid is None:
+        raise HTTPException(status_code=400, detail="User is not part of a household")
+
+    leave_household(request.userid)
+    return {"message": "User left household successfully"}
