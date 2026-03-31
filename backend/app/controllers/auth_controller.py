@@ -38,3 +38,7 @@ def login_for_access_token(request: OAuth2PasswordRequestForm = Depends()):
         )
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me", response_model=UserResponse, summary="Get my profile (protected)")
+def read_me(current_user: UserResponse = Depends(get_current_user)):
+    return current_user
