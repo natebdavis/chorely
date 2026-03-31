@@ -104,7 +104,7 @@ def create_user(request: UserCreateRequest):
     if not is_email_available(request.email):
         raise HTTPException(status_code=409, detail="Email not available")
 
-    if not is_phone_num_available(request.phone_num):
+    if request.phone_num is not None and not is_phone_num_available(request.phone_num):
         raise HTTPException(status_code=409, detail="Phone number not available")
     
     hashed_password = get_password_hash(request.password)

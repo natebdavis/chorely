@@ -3,6 +3,7 @@ from app.database import *
 """
 Module for testing the User module.
 Uses pytest (https://docs.pytest.org/en/latest/)
+To run, use "python -m pytest" instead of "pytest", as tests are in a subfolder.
 
 Contributors: Nathaniel Davis
 """

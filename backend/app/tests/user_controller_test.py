@@ -4,6 +4,7 @@ from app.database import get_user, remove_user
 """
 Module for testing the User controller module.
 Uses pytest (https://docs.pytest.org/en/latest/)
+To run, use "python -m pytest" instead of "pytest", as tests are in a subfolder.
 
 Contributors: Nathaniel Davis
 """
