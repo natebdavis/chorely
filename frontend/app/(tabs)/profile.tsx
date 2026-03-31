@@ -1,9 +1,11 @@
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useAuth } from "../../components/AuthContext";
 
 export default function ProfileScreen() {
-  const username = "Username";
+  const { user, logout } = useAuth();
+  const username = user?.username ?? "User";
 
   return (
     <View style={styles.container}>
@@ -16,6 +18,8 @@ export default function ProfileScreen() {
         />
       </View>
 
+      <Text style={styles.username}>{username}</Text>
+
       <TouchableOpacity 
         style={styles.settingsButton}
       >
@@ -25,7 +29,7 @@ export default function ProfileScreen() {
 
       <TouchableOpacity 
         style={styles.logoutButton}
-        onPress={() => router.replace("/login")}
+        onPress={async () => { await logout(); router.replace("/login"); }}
       >
         <Ionicons name="log-out-outline" size={20} color="#fff" />
         <Text style={styles.buttonText}>Logout</Text>
@@ -79,6 +83,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     gap: 8,
+  },
+  username: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 32,
   },
   buttonText: {
     color: "#fff",
