@@ -81,7 +81,7 @@ export default function Register() {
     const cleanedPhone = phoneNum.replace(/\D/g, "");
 
     try {
-      const response = await fetch(`${API_URL}/users`, {
+      const response = await fetch(`${API_URL}/user/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
