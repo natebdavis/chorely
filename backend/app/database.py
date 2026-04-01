@@ -15,7 +15,12 @@ Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 """
 
 def get_client() -> Client:
-    """Creates a client to connect with the Supabase Database.
+    """
+    Creates a client to connect with the Supabase Database.
+
+    Output: 
+        A Supabase Client object that can be used to interact with the database.
+
     Raises:
         ValueError: if required environment variables are missing.
         Exception: if client creation fails.
@@ -35,9 +40,15 @@ def get_client() -> Client:
 
 def _get_data_type_list_from_response(data: Optional[Iterable[dict]], 
                                  data_type: CreateFromDict) -> Optional[Iterable[CreateFromDict]]:
-    """Helper Function used to create a list of Data Objects given a response from a query.
-    Input: `data` an iterable of dictionaries that hold the data of each data object.
-            `data_type` the class type that is being represented in the list of dictionaries."""
+    """
+    Helper Function used to create a list of Data Objects given a response from a query.
+
+    Input: 
+        `data` an iterable of dictionaries that hold the data of each data object.
+        `data_type` the class type that is being represented in the list of dictionaries.
+    Output: 
+        An iterable of data_type objects created using the list of dictionaries. If the input data is None, returns None.
+    """
 
     data_type_list = []
     if data:
@@ -50,7 +61,18 @@ def _get_data_type_list_from_response(data: Optional[Iterable[dict]],
     
 def _select_all_where_equals_query(table_name: str, col_name: str, value, 
                                    client: Optional[Client] = None) -> Optional [list[dict]]:
-    """Helper Function used to select all data from a tables where one column equals the value given."""
+    """
+    Helper Function used to select all data from a tables where one column equals the value given.
+    
+    Input:
+        table_name: The name of the table to query.
+        col_name: The name of the column to check for equality.
+        value: The value to check for equality in the specified column.
+        client: Optional Supabase client. If not provided, a new client will be created.
+    
+    Output:
+        A list of dictionaries representing the rows in the table where the specified column equals the given value
+    """
     
     if client is None:   
         client = get_client()
@@ -60,8 +82,11 @@ def _select_all_where_equals_query(table_name: str, col_name: str, value,
     return response.data
 
 def is_username_available(username: str, client: Optional[Client] = None) -> bool:
-    """Check if a username is available for registration.
-    Output: `True` if the username is not taken, `False` otherwise."""
+    """
+    Check if a username is available for registration.
+
+    Output: 
+        `True` if the username is not taken, `False` otherwise."""
     if client is None:
         client = get_client()
 
@@ -69,8 +94,11 @@ def is_username_available(username: str, client: Optional[Client] = None) -> boo
     return not response
 
 def is_email_available(email: str, client: Optional[Client] = None) -> bool:
-    """Check if an email is available for registration.
-    Output: `True` if the email is not taken, `False` otherwise."""
+    """
+    Check if an email is available for registration.
+
+    Output: 
+        `True` if the email is not taken, `False` otherwise."""
     if client is None:
         client = get_client()
 
@@ -78,8 +106,11 @@ def is_email_available(email: str, client: Optional[Client] = None) -> bool:
     return not response
 
 def is_phone_num_available(phone_num: int, client: Optional[Client] = None) -> bool:
-    """Check if a phone number is available for registration.
-    Output: `True` if the phone number is not taken, `False` otherwise."""
+    """
+    Check if a phone number is available for registration.
+
+    Output: 
+        `True` if the phone number is not taken, `False` otherwise."""
     if client is None:
         client = get_client()
 
@@ -87,8 +118,12 @@ def is_phone_num_available(phone_num: int, client: Optional[Client] = None) -> b
     return not response
 
 def get_user_by_username(username: str, client: Optional[Client] = None) -> Optional[User]:
-    """Get a single `user` given a username.
-    Output: A `User` Object created using the first entry matching the username"""
+    """
+    Get a single `user` given a username.
+
+    Output: 
+        A `User` Object created using the first entry matching the username
+    """
 
     if client is None:
         client = get_client()
@@ -101,8 +136,12 @@ def get_user_by_username(username: str, client: Optional[Client] = None) -> Opti
         return User.from_dict(user_data[first])
     
 def authenticate_user(username: str, password: str, client: Optional[Client] = None) -> Optional[User]:
-    """Authenticate a user given a username and password.
-    Output: A `User` Object if the username and password match, `False` otherwise."""
+    """
+    Authenticate a user given a username and password.
+
+    Output: 
+        A `User` Object if the username and password match, `False` otherwise.
+    """
     user = get_user_by_username(username, client)
     if not user:
         return False
@@ -112,7 +151,12 @@ def authenticate_user(username: str, password: str, client: Optional[Client] = N
 
 async def get_current_user(client: Client = Depends(get_client), token: str = Depends(oauth2_scheme)) ->UserResponse:
     """Get the current user given a JWT token.
-    Output: A `User` Object if the token is valid, raises an HTTPException otherwise."""
+
+    Output: 
+        A `User` Object if the token is valid, raises an HTTPException otherwise.
+    Raises:
+        HTTPException(401) if the token is invalid or if the user does not exist.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -136,8 +180,12 @@ async def get_current_user(client: Client = Depends(get_client), token: str = De
     return user.createResponseModel()
 
 def get_user(userid: int, client: Optional[Client] = None) -> Optional[User]:
-    """Get a single `user` given a userid.
-    Output: A `User` Object created using the first entry matching the userid"""
+    """
+    Get a single `user` given a userid.
+
+    Output: 
+        A `User` Object created using the first entry matching the userid
+    """
 
     first = 0
     user_data = _select_all_where_equals_query("users", User_Col_Name.userid.value, userid, client)
@@ -147,10 +195,11 @@ def get_user(userid: int, client: Optional[Client] = None) -> Optional[User]:
         return None
 
 def get_users(householdid: int, client: Optional[Client] = None) -> Optional[Iterable[User]]:
-    """Get collection of all `users` in household.
-    Input: `client` is the connection object used to interact with the database, if none is given
-    one is attempted to be created.
-    Output: A iterable of `users` that are in the specified household."""
+    """
+    Get collection of all `users` in household.
+    
+    Output: 
+        A iterable of `users` that are in the specified household."""
     
     # Fetch all data from the 'users' table
     data = _select_all_where_equals_query("users", User_Col_Name.householdid.value, householdid, client)
@@ -159,8 +208,11 @@ def get_users(householdid: int, client: Optional[Client] = None) -> Optional[Ite
     return _get_data_type_list_from_response(data, User)
 
 def get_chore(choreid: int, client: Optional[Client] = None) -> Optional[Chore]:
-    """Get a single `chore` given a choreid.
-    Output: A `Chore` Object created using the first entry matching the choreid"""
+    """
+        Get a single `chore` given a choreid.
+
+    Output: 
+        A `Chore` Object created using the first entry matching the choreid"""
 
     first = 0
     chore_data = _select_all_where_equals_query("chores", Chore_Col_Name.choreid.value, choreid, client)
@@ -177,10 +229,12 @@ def get_chore(choreid: int, client: Optional[Client] = None) -> Optional[Chore]:
 
 def get_chores(householdid: int, client: Optional[Client] = None, 
                users: Optional[Iterable[User]] = None) -> Optional[Iterable[Chore]]:
-    """Get collection of all `chores` in household.
-    Input: `client` is the connection object used to interact with the database, if none is given
-    one is attempted to be created.
-    Output: A iterable of `chores` that are in the specified household."""
+    """
+    Get collection of all `chores` in household.
+    
+    Output: 
+    A iterable of `chores` that are in the specified household.
+    """
 
     # Fetch all data from the 'chores' table
     data = _select_all_where_equals_query("chores", Chore_Col_Name.householdid.value, householdid, client)
@@ -224,7 +278,12 @@ def get_chores(householdid: int, client: Optional[Client] = None,
     return _get_data_type_list_from_response(data, Chore)
 
 def add_user(user: User, client: Optional[Client] = None):
-    """Add user to database"""
+    """
+    Add user to database
+
+    Output: 
+        Inserted row data returned from Supabase.
+    """
 
     if client is None:
         client = get_client()
@@ -244,9 +303,13 @@ def add_user(user: User, client: Optional[Client] = None):
 
 def remove_user(user: User, client: Optional[Client] = None) -> bool:
 
-    """Removes user from database if user exists. Also removes all notifications associated with the user and sets
+    """
+    Removes user from database if user exists. Also removes all notifications associated with the user and sets
     all chores assigned to or requested by the user to null. 
-    Output: Returns True if user was removed, False if user did not exist in database."""
+    
+    Output: 
+        Returns True if user was removed, False if user did not exist in database.
+    """
 
     if client is None:
         client = get_client()
@@ -361,8 +424,12 @@ def update_chore(
     return response.data
 
 def get_all_requested_chores(userid: int, client: Optional[Client] = None) -> Optional[Iterable[Chore]]:
-    """Given a userid, return all chores that are requested by the user.
-    Output: A iterable of `chores` that are requested by the user."""
+    """
+    Given a userid, return all chores that are requested by the user.
+    
+    Output: 
+        A iterable of `chores` that are requested by the user.
+    """
     if client is None:
         client = get_client()
 
@@ -377,8 +444,12 @@ def get_all_requested_chores(userid: int, client: Optional[Client] = None) -> Op
     return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
 
 def get_all_in_progress_assigned_chores(userid: int, client: Optional[Client] = None) -> Optional[Iterable[Chore]]:
-    """Given a userid, return all chores that are assigned to the user and that are in progress.
-    Output: A iterable of `chores` that are assigned to the user and in progress."""
+    """
+    Given a userid, return all chores that are assigned to the user and that are in progress.
+    
+    Output: 
+        A iterable of `chores` that are assigned to the user and in progress.
+    """
 
     if client is None:
         client = get_client()
@@ -395,8 +466,12 @@ def get_all_in_progress_assigned_chores(userid: int, client: Optional[Client] = 
     return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
 
 def get_all_completed_chores(userid: int, client: Optional[Client] = None) -> Optional[Iterable[Chore]]:
-    """Given a userid, return all chores that are assigned to the user and that are completed.
-    Output: A iterable of `chores` that are assigned to the user and completed."""
+    """
+    Given a userid, return all chores that are assigned to the user and that are completed.
+    
+    Output: 
+        A iterable of `chores` that are assigned to the user and completed.
+    """
 
     if client is None:
         client = get_client()
@@ -413,6 +488,12 @@ def get_all_completed_chores(userid: int, client: Optional[Client] = None) -> Op
     return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
 
 def get_householdid(userid: int, client: Optional[Client] = None) -> Optional[int]:
+    """
+    Get the householdid of a user given their userid. Returns None if user does not belong to a household.
+    
+    Output:
+        The householdid of the user, or None if the user does not belong to a household.
+    """
     user = get_user(userid=userid)
     if user:
         return user.householdid
@@ -436,11 +517,20 @@ def household_exists(householdid: int, client: Optional[Client] = None) -> bool:
     return bool(response.data)
 
 def get_household_members(householdid: int, client: Optional[Client] = None) -> Optional[Iterable[User]]:
-    """Get all users belonging to a household."""
+    """
+    Get all users belonging to a household.
+    
+    Output:
+        A iterable of `users` that are in the specified household. Returns None if household does not exist or has no members.
+    """
     return get_users(householdid, client)
 
 def join_household(userid: int, householdid: int, client: Optional[Client] = None):
-    """Assign a user to a household."""
+    """
+    Assign a user to a household.
+    
+    Output:
+        Returns updated user data if successful, None if user is not found."""
     if client is None:
         client = get_client()
 
@@ -455,7 +545,11 @@ def join_household(userid: int, householdid: int, client: Optional[Client] = Non
     return response.data
 
 def leave_household(userid: int, client: Optional[Client] = None):
-    """Remove a user from their current household by setting householdid to null."""
+    """
+    Remove a user from their current household by setting householdid to null. Deletes the household if no members remain after the user leaves.
+    Output:
+        Returns updated user data if successful, None if user is not found.
+    """
     if client is None:
         client = get_client()
 
@@ -483,6 +577,9 @@ def delete_household_if_empty(householdid: int, client: Optional[Client] = None)
     If no users remain in a household, clean up related chores.
     Since there is no standalone households table yet, this means removing
     chores associated with that household.
+    
+    Output:
+        Returns True if household was deleted, False if household still has members.
     """
     if client is None:
         client = get_client()
@@ -495,12 +592,22 @@ def delete_household_if_empty(householdid: int, client: Optional[Client] = None)
     return True
 
 def get_household_member_count(householdid: int, client: Optional[Client] = None) -> int:
-    """Return number of users in a household."""
+    """
+    Return number of users in a household.
+    
+    Output:
+        The number of members in the household. Returns 0 if household has no members or does not exist.
+    """
     members = get_users(householdid, client)
     return len(members) if members else 0
 
 def create_household_db(client: Optional[Client] = None):
-    """create household in database"""
+    """
+    create household in database
+    
+    Output:
+        Inserted row data returned from Supabase.
+    """
     if client is None:
         client = get_client()
         

@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 
-from app.household import HouseholdCreateRequest, HouseholdResponse
-from app.database import household_exists, get_household_member_count, get_current_user, get_householdid, join_household, create_household_db, get_users
+from app.household import HouseholdResponse
+from app.database import get_household_member_count, get_current_user, get_householdid, join_household, create_household_db, get_users
 from app.user import UserResponse
 
 from app.database import join_household, leave_household, get_user, get_householdid, get_current_user, get_household_member_count
-from app.household import HouseholdJoinRequest, HouseholdLeaveRequest, MembershipResponse
+from app.household import HouseholdJoinRequest, HouseholdLeaveRequest
 
 """
 Module for managing Household Controller operations.
@@ -30,7 +30,7 @@ def get_household_users(current_user: UserResponse = Depends(get_current_user)):
         List of UserResponse objects.
 
     Raises:
-        HTTPException(404) if no users exist for that household.
+        HTTPException(404) if no users exist for that household or if the household does not exist.
     """
 
     userid = current_user["userid"]
@@ -58,6 +58,18 @@ def get_household_users(current_user: UserResponse = Depends(get_current_user)):
 
 @router.get("", response_model=HouseholdResponse)
 def get_households(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Retrieve household information for the current user.
+
+    Inputs:
+        current_user: The currently authenticated user.
+
+    Outputs:
+        HouseholdResponse object containing household information.
+    
+    Raises:
+        HTTPException(404) if the user has not joined a household.
+    """
 
     userid = current_user["userid"]
     householdid = get_householdid(userid=userid)
@@ -72,6 +84,18 @@ def get_households(current_user: UserResponse = Depends(get_current_user)):
 
 @router.post("", response_model=HouseholdResponse)
 def create_household(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Create a new household and add the current user as a member.
+
+    Inputs:
+        current_user: The currently authenticated user.
+
+    Outputs:
+        HouseholdResponse object containing the new household information.
+
+    Raises:
+        HTTPException(404) if the user is already a member of an existing household.
+    """
 
     householdid = get_householdid(current_user["userid"])
 
@@ -89,9 +113,19 @@ def create_household(current_user: UserResponse = Depends(get_current_user)):
 
 @router.post("/join")
 def create_membership(request: HouseholdJoinRequest, current_user: UserResponse = Depends(get_current_user)):
-    """Allow a user to add a user to their household.
+    """
+    Allow a user to add a user to their household.
+
     Inputs:
-        request: HouseholdJoinRequest containing the userid of the user being added and the householdid of the household they are being added to."""
+        request: HouseholdJoinRequest containing the userid of the user being added and the householdid of the household they are being added to.
+
+    Outputs:
+        A success message indicating the user was added to the household.
+
+    Raises:
+        HTTPException(400) if the user is not a member of the household they are trying to add another user to, if the user being added is already a member of the household, or if the user being added is already a member of another household.
+        HTTPException(404) if the user being added does not exist.
+    """
     
     current_userid = current_user["userid"]
     current_householdid = get_householdid(userid=current_userid)
@@ -119,9 +153,19 @@ def create_membership(request: HouseholdJoinRequest, current_user: UserResponse 
 
 @router.delete("/leave")
 def delete_membership(request: HouseholdLeaveRequest, current_user: UserResponse = Depends(get_current_user)):
-    """Allow a user to leave their current household.
+    """
+    Allow a user to leave their current household.
+
     Inputs:
-        request: HouseholdLeaveRequest containing the userid of the user leaving the household."""
+        request: HouseholdLeaveRequest containing the userid of the user leaving the household.
+        
+    Outputs:        
+        A success message indicating the user has left the household.
+        
+    Raises:
+        HTTPException(400) if the user is not a member of any household or if the user is attempting to remove another user from a household.
+        HTTPException(404) if the user does not exist.
+    """
 
     current_userid = current_user["userid"]
 
