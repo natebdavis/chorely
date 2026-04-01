@@ -36,7 +36,7 @@ export default function Register() {
   const emailValid = email.length === 0 || isValidEmail(email);
 
   const API_URL = "http://127.0.0.1:8000"; //use this if you are running the IOS simulator on mac
-  //const API_URL = "https://chorely.onrender.com/chores/1";
+  //const API_URL = "https://chorely.onrender.com";
 
   
   //this makes the phone number appear like (XXX)-XXX-XXXX

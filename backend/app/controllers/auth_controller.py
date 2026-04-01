@@ -29,6 +29,9 @@ def login_for_access_token(request: OAuth2PasswordRequestForm = Depends()):
         HTTPException(401) if the username or password is incorrect.
     """
 
+    if is_username_available(request.username):
+        raise HTTPException(status_code=401, detail="No user with that username exists.")
+
     user = authenticate_user(request.username, request.password)
     if not user:
         raise HTTPException(
@@ -38,3 +41,7 @@ def login_for_access_token(request: OAuth2PasswordRequestForm = Depends()):
         )
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me", response_model=UserResponse, summary="Get my profile (protected)")
+def read_me(current_user: UserResponse = Depends(get_current_user)):
+    return current_user
