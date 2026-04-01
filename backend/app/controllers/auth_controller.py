@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.utils import Token, create_access_token
-from app.database import authenticate_user, is_username_available
+from app.database import authenticate_user, is_username_available, get_current_user
 from app.user import UserResponse
 
 """
