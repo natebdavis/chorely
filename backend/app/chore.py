@@ -83,6 +83,7 @@ class ChoreResponse(BaseModel):
     status: Optional[str] = None
 
 class Chore_Col_Name(Enum):
+    """Column names for Chore database table."""
     choreid = "choreid"
     cname = "cname"
     description = "descrip"
@@ -112,7 +113,7 @@ class Notification:
 
 
 class Chore(CreateFromDict):
-    """Chore."""
+    """Chore Object representing a chore in the system."""
     choreid: Optional[int]
     name: str
     description: str
