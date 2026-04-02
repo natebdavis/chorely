@@ -11,6 +11,7 @@ Run the Expo frontend and FastAPI backend in one command.
 - [Visual Studio Code](https://code.visualstudio.com/download)
 - [Android Studio](https://developer.android.com/studio)
 - [Node.js](https://nodejs.org/en/download)
+- [Python](https://www.python.org/downloads/)
 
 ---
 
