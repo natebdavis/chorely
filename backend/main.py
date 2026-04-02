@@ -25,5 +25,5 @@ app.include_router(notification_router)
 
 @app.get("/")
 def root():
-    return {"message": "Backend running"}
+    return {"message": "Beta Release Version -Backend running"}
 
