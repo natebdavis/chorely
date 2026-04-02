@@ -73,9 +73,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 - For each method that has a lock symbol to its right, a user must be logged in and authorized to access these methods:
 
-* Create a dummy account using the `/user/create` function (click on the method and press try it out)
-* Get a session token by using the `/auth/login` function, output should be displayed on the bottom copy the string that says "access token"
-* Scroll up to the top of the screen and press button on the right that says `Authorize`, enter your credentials and paste the token in the last two fields
+    * Create a dummy account using the `/user/create` function (click on the method and press try it out)
+    * Get a session token by using the `/auth/login` function, output should be displayed on the bottom copy the string that says "access token"
+    * Scroll up to the top of the screen and press button on the right that says `Authorize`, enter your credentials and paste the token in the last two fields
 
 - All locked methods should be accessable. 
 
@@ -126,15 +126,15 @@ npm install -g expo-cli
 ```
 
 - Andriod SDK not found
-* Make sure envirnoment variables are set in windows:
-```bash
-ANDROID_HOME=C:\Users\<your-user>\AppData\Local\Android\Sdk
-```
-* Add to PATH:
-```bash
-%ANDROID_HOME%\platform-tools
-```
-* [Useful Resource](https://www.java.com/en/download/help/path.html)
+    * Make sure envirnoment variables are set in windows:
+    ```bash
+    ANDROID_HOME=C:\Users\<your-user>\AppData\Local\Android\Sdk
+    ```
+    * Add to PATH:
+    ```bash
+    %ANDROID_HOME%\platform-tools
+    ```
+    * [Useful Resource](https://www.java.com/en/download/help/path.html)
 
 
 
