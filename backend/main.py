@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 from app.controllers.chore_controller import router as chore_router
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.user_controller import router as user_router
@@ -26,4 +27,7 @@ app.include_router(notification_router)
 @app.get("/")
 def root():
     return {"message": "Backend running"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8000)
 
