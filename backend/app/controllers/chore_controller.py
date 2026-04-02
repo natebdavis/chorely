@@ -32,7 +32,7 @@ def update_chore(choreid: int, payload: ChoreUpdateRequest, current_user: UserRe
         Updated ChoreResponse object.
 
     Raises:
-        HTTPException(400) if status is invalid and/or if status is set to IN_PROGRESS without an assignee or UNASSIGNED with an assignee.
+        HTTPException(400) if status is invalid.
         HTTPException(404) if assignee is not found or chore is not found.
         HTTPException(500) if update fails.
     """
@@ -138,14 +138,6 @@ def get_chore(choreid: int, current_user: UserResponse = Depends(get_current_use
 def get_household_chores(current_user: UserResponse = Depends(get_current_user)):
     """
     Retrieve all chores for a given household.
-
-    Inputs:
-        current_user: The currently authenticated user.
-    Outputs:
-            List of ChoreResponse objects representing all chores in the user's household.
-    Raises:        
-        HTTPException(404) if the user has not joined a household.
-        HTTPException(500) if retrieval fails.
     """
     try:
         householdid = current_user["householdid"]
@@ -182,7 +174,7 @@ def create_chore(payload: ChoreCreateRequest, current_user: UserResponse = Depen
 
     Raises:
         HTTPException(404) if requester or assignee does not exist.
-        HTTPException(400) if due_date format is invalid, assignee is not in the same household as the requester, or if due_date is in the past.
+        HTTPException(400) if due_date format is invalid.
         HTTPException(500) if database insertion fails.
     """
 

@@ -10,7 +10,7 @@ Module for managing User Controller operations.
 Handles HTTP requests related to Users and exposes API endpoints
 for creating and retrieving Users in the system.
 
-Contributors: Edmund Krajewski, Gilligan Berlinski
+Contributors: Edmund Krajewski
 """
 
 router = APIRouter(tags=["users"], prefix="/user")
@@ -46,25 +46,8 @@ def get_single_user(userid: int):
 
 @router.get("", response_model=UserResponse, summary="Get my profile (protected)")
 def read_me(current_user: UserResponse = Depends(get_current_user)):
-    """
-    Retrieve the profile of the currently authenticated user.
-
-    Inputs:
-        current_user: The currently authenticated user.
-
-    Outputs:
-        UserResponse object containing the user's profile information.
-    
-    Raises:        
-        HTTPException(404) if the user is not found. 
-    """
-
     userid = current_user["userid"]
     user = get_user(userid)
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     return UserResponse(
         userid=user.userid,
         username=user.username,
@@ -85,9 +68,6 @@ def create_user(request: UserCreateRequest):
 
     Outputs:
         Success message if user creation succeeds.
-
-    Raises:
-        HTTPException(409) if the username, email, or phone number is already in use.
     """
 
     if not is_username_available(request.username):
