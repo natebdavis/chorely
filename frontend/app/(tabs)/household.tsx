@@ -1,4 +1,5 @@
-import {useState, 
+import {
+  useState, 
   useEffect
 } from "react"; 
 import {
@@ -30,11 +31,15 @@ export default function Household() {
   const [joinUserId, setJoinUserId] = useState("");
   const [isAddingUser, setIsAddingUser] = useState(false);
 
+  const [householdid, setHouseholdid] = useState<string | null>(null);
+  const [memberCount, setMemberCount] = useState<number | null>(null);
+
   const { user } = useAuth(); //get the 'user' object from useAuth instead of 'token' directly
   const token = user?.token; //grab the token from the user object
 
 const fetchMembers = async () => {
-    if (!token) return;
+    if (!token) 
+      return;
     try {
       const response = await fetch(`${API_URL}/households/members`, {
         method: "GET",
@@ -55,17 +60,42 @@ const fetchMembers = async () => {
     }
   };
 
-  useEffect(() => {
-    fetchMembers();
-  }, [token]);
+  const fetchHouseholdInfo = async () => {
+    if (!token) return;
 
+    try {
+      const response = await fetch(`${API_URL}/households`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setHouseholdid(String(data.householdid));
+        setMemberCount(data.member_count);
+        setHasHousehold(true);
+      } else {
+        setHouseholdid(null);
+        setMemberCount(null);
+      }
+    } catch (error) {
+      console.log("Error fetching household info:", error);
+    }
+  };
+
+  useEffect(() => {
+  fetchMembers();
+  fetchHouseholdInfo();
+}, [token]);
 
   const handleCreateHousehold = async () => {
     try {
       setLoading(true);
 
       if (!token) {
-        Alert.alert("Error", "No auth token found. Please log in again.");
+        Alert.alert("Error", "Please log in again.");
         return;
       }
 
@@ -84,13 +114,17 @@ const fetchMembers = async () => {
         return;
       }
 
+      setHouseholdid(String(data.householdid));
+      setMemberCount(data.member_count);
+      setHasHousehold(true);
+
       Alert.alert(
         "Success",
         `Household created successfully.\nHousehold ID: ${data.householdid}\nMembers: ${data.member_count}`
       );
 
-      setHasHousehold(true);
-      fetchMembers();
+      await fetchMembers();
+      await fetchHouseholdInfo();
 
       console.log("Created household:", data);
     } catch (error) {
@@ -153,10 +187,17 @@ const handleJoinHousehold = async () => {
       {hasHousehold ? (
         <View style={styles.listContainer}>
           <Text style={styles.titleText}>Your Household Members</Text>
-          
-          <TouchableOpacity 
-            style={styles.leaveButton} 
-          >
+            
+            <Text style={styles.subTitleText}>
+                House ID: {householdid ?? "N/A"}
+            </Text>
+
+            <Text style={styles.subTitleText}>
+                Number of Members: {members.length}
+            </Text>
+            
+            <TouchableOpacity 
+            style={styles.leaveButton}>
             <Text style={styles.leaveButtonText}>Leave Household</Text>
           </TouchableOpacity>
 
@@ -253,6 +294,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
   },
+  subTitleText: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "white",
+    marginBottom: 20,
+    textAlign: "left",
+  },
   text: { 
     fontSize: 18,
     color: "white",
@@ -279,14 +327,13 @@ const styles = StyleSheet.create({
   },
   floatingButton: {
     position: "absolute",
-    //top: "6%",
-    bottom:"20%",
-    alignSelf: "center", 
-    right: 0,
+    top:"4.5%",
+    //bottom: "20%",
+    right: -10,
     backgroundColor: "#2b75d5",
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 8, 
+    borderRadius: 8,
   },
   floatingButtonText: {
     color: "white",
