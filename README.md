@@ -136,6 +136,7 @@ npm install -g expo-cli
     %ANDROID_HOME%\platform-tools
     ```
     * [Useful Resource](https://www.java.com/en/download/help/path.html)
+    * [Android SDK Tools Release Notes](https://developer.android.com/tools/releases/platform-tools)
 
 
 
