@@ -31,7 +31,6 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
-  //const isValidEmail = (email: string) => {return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);};
   const isValidEmail = (email: string) => {return /^[^\s@]+@[^\s@.]+\.[a-zA-Z]{2,}$/.test(email);}; 
   
   const emailValid = email.length === 0 || isValidEmail(email);
