@@ -40,11 +40,7 @@ export default function Register() {
   const cleanedPhoneForCheck = phoneNum.replace(/\D/g, "");
   const isPhoneValid = phoneNum.length === 0 || cleanedPhoneForCheck.length === 10;
 
-  //const API_URL = "http://127.0.0.1:8000"; //use this if you are running the IOS simulator on mac
-  //const API_URL = "https://chorely.onrender.com";
-
-
-  const API_URL = "http://10.0.0.7:8000"; //testing on expo app
+  const API_URL = "https://chorely-beta-release.onrender.com";
   
   //this makes the phone number appear like (XXX)-XXX-XXXX
     const formatPhoneNumber = (text: string) => {

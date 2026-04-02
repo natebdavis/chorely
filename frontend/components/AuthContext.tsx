@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://chorely-beta-release.onrender.com";
 
 type AuthUser = {
   userid: number | null;
@@ -60,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const tokenData = await tokenResponse.json();
       const token = tokenData.access_token;
 
-      // GET /auth/me with token to get userid, username, householdid
-      const meResponse = await fetch(`${API_URL}/auth/me`, {
+      // GET /user with token to get userid, username, householdid
+      const meResponse = await fetch(`${API_URL}/user`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
