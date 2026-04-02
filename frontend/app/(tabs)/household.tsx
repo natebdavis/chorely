@@ -171,6 +171,49 @@ const handleJoinHousehold = async () => {
     }
   };
 
+  const handleLeaveHousehold = async () => {
+  if (!token || !user?.userid) {
+    Alert.alert("Error", "User information is missing. Please log in again.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const response = await fetch(`${API_URL}/households/leave`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userid: user.userid,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      Alert.alert("Error", data.detail || "Failed to leave household.");
+      return;
+    }
+
+    Alert.alert("Success", data.message || "You have left the household.");
+
+    setHasHousehold(false);
+    setMembers([]);
+    setHouseholdid(null);
+    setMemberCount(null);
+    setIsAddingUser(false);
+    setJoinUserId("");
+  } catch (error) {
+    console.log("Leave household error:", error);
+    Alert.alert("Error", "Something went wrong while leaving the household.");
+  } finally {
+    setLoading(false);
+  }
+};
+
   
   const showMember = ({ item }: { item: Member }) => (
     <View style={styles.memberCard}>
@@ -196,9 +239,11 @@ const handleJoinHousehold = async () => {
                 Number of Members: {members.length}
             </Text>
             
-            <TouchableOpacity 
-            style={styles.leaveButton}>
+            <TouchableOpacity //this is the red button that allows a user to leave a household
+              style={styles.leaveButton}
+             onPress={handleLeaveHousehold}>
             <Text style={styles.leaveButtonText}>Leave Household</Text>
+            
           </TouchableOpacity>
 
           <FlatList
