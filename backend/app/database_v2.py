@@ -293,12 +293,64 @@ def add_chore(chore: ChoreCreateRequest, client: Union[Client, None] = None):
         return None
     
 
-def remove_chore(household: int, choreid: int, client: Union[Client, None] = None):
-    pass
+def remove_chore(householdid: int, choreid: int, client: Union[Client, None] = None) -> bool:
+    """
+    Remove chore from database.
 
-def update_chore(household: int, choreid: int, status: Union[str, None] = None, 
-                 assignee_id: Union[int, None] = None, client: Union[Client, None] = None):
-    pass
+    Inputs:
+        household: Household ID the chore belongs to.
+        choreid: ID of the chore to delete.
+        client: Optional Supabase client.
+
+    Output:
+        `True` if chore was able to be deleted `False` if otherwise.
+    """
+    if client is None:
+        client = get_client()
+
+    response = (client.table(CHORE_TABLE_NAME).delete()
+        .eq(Chore_Col_Name.householdid.value, householdid)
+        .eq(Chore_Col_Name.choreid.value, choreid)
+        .execute()
+    )
+
+    return False if not response.data else True
+
+def update_chore(householdid: int, choreid: int, status: Union[str, None] = None, 
+                 assignee_id: Union[int, None] = None, client: Union[Client, None] = None) -> Union[ChoreResponse, None]:
+    """
+    Update chore data in database.
+
+    Inputs:
+        householdid: Household ID the chore belongs to.
+        choreid: Unique identifier of the chore.
+        status: Optional new status of the chore.
+        assignee_id: Optional new assignee user ID. Use None to unassign.
+        client: Optional Supabase client.
+
+    Output:
+        Updated row data returned from Supabase.
+    """
+    if client is None:
+        client = get_client()
+
+    data = {}
+
+    if status is not None:
+        data[Chore_Col_Name.status.value] = status
+
+    data[Chore_Col_Name.assignee.value] = assignee_id
+
+    response = (
+        client
+        .table(CHORE_TABLE_NAME)
+        .update(data)
+        .eq(Chore_Col_Name.householdid.value, householdid)
+        .eq(Chore_Col_Name.choreid.value, choreid)
+        .execute()
+    )
+
+    return None if not response.data else create_ChoreResponse(response.data)
 
 def get_all_requested_chores(userid: int, client: Union[Client, None] = None) -> Union[Iterable[ChoreResponse], None]:
     pass
