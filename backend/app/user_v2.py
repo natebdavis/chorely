@@ -1,6 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel, EmailStr
 from typing import Union
+from collections.abc import Iterable
 
 
 """
@@ -76,6 +77,8 @@ class UsersToken(BaseModel):
     access_token: str
     token_type: str
 
+USER_TABLE_NAME = "users"
+
 class User_Col_Name(Enum):
     userid = "userid"
     passhash = "passhash"
@@ -125,3 +128,11 @@ def create_UsersToken(data: dict) -> UsersToken:
 
 def get_full_name(user: UserResponse) -> str:
     return user.fname + " " + user.lname
+
+def search_user(userid: int, users: Iterable[UserResponse]) -> Union[UserResponse, None]:
+
+    for user in users:
+        if UserResponse.userid == userid:
+            return user
+        
+    return None

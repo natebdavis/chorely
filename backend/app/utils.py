@@ -7,6 +7,7 @@ import pathlib
 import os
 from pydantic import BaseModel
 from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException, status
 
 class CreateFromDict(ABC): 
     '''Interface used for data classes that can be created using a dictionary.'''
@@ -68,5 +69,9 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Model for data contained in JWT token."""
     username: str | None = None
+
+credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},)
 
 

@@ -1,6 +1,7 @@
 from enum import Enum, auto
 from pydantic import BaseModel, Field
 from typing import Union
+from datetime import datetime
 
 from app.user_v2 import UserResponse, get_full_name
 
@@ -22,11 +23,15 @@ class ChoreCreateRequest(BaseModel):
     Output:
         JSON body representing a Chore creation request.
     """
-
+    
+    householdid: int
     name: str = Field(..., min_length=1, max_length=50)
     description: str = Field(..., min_length=1, max_length=3000)
+    request_date: str
     due_date: str
+    requester_id: int
     assignee_id: Union[int, None] = None
+    status: str
 
 class ChoreUpdateRequest(BaseModel):
     """
@@ -76,6 +81,8 @@ class ChoreResponse(BaseModel):
     assignee: Union[str, None] = None
     status: Union[str, None] = None
 
+CHORE_TABLE_NAME = "chores"
+
 class Chore_Col_Name(Enum):
     """Column names for Chore database table."""
     choreid = "choreid"
@@ -97,11 +104,17 @@ class Status(Enum):
     CANCELLED = auto()
 
 def create_ChoreCreateRequest(data: dict) -> ChoreCreateRequest:
+    status = Status.IN_PROGRESS.value if data[Chore_Col_Name.assignee] else Status.UNASSIGNED.value
+
     return ChoreCreateRequest(
+        householdid=data[Chore_Col_Name.householdid],
         name=data[Chore_Col_Name.cname],
         description=data[Chore_Col_Name.description],
+        request_date=datetime.now().isoformat(),
         due_date=data[Chore_Col_Name.due_date],
-        assignee_id=data[Chore_Col_Name.assignee]
+        requester_id=data[Chore_Col_Name.requester],
+        assignee_id=data[Chore_Col_Name.assignee],
+        status=status
     )
 
 def create_ChoreUpdateRequest(data: dict) -> ChoreUpdateRequest:
