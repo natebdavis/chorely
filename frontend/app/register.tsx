@@ -31,12 +31,15 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
-  const isValidEmail = (email: string) => {return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);};
+  const isValidEmail = (email: string) => {return /^[^\s@]+@[^\s@.]+\.[a-zA-Z]{2,}$/.test(email);}; 
+  
   const emailValid = email.length === 0 || isValidEmail(email);
+  const isUsernameValid = username.length === 0 || username.length >= 6;
+  const isPasswordValid = password.length === 0 || password.length >= 6;
+  const cleanedPhoneForCheck = phoneNum.replace(/\D/g, "");
+  const isPhoneValid = phoneNum.length === 0 || cleanedPhoneForCheck.length === 10;
 
-  const API_URL = "http://127.0.0.1:8000"; //use this if you are running the IOS simulator on mac
-  //const API_URL = "https://chorely.onrender.com/chores/1";
-
+  const API_URL = "https://chorely-beta-release.onrender.com";
   
   //this makes the phone number appear like (XXX)-XXX-XXXX
     const formatPhoneNumber = (text: string) => {
@@ -63,8 +66,25 @@ export default function Register() {
 
 
   const handleRegister = async () => {
-    if (!username || !fname || !lname || !email || !password || !confirmPassword) {
+    if (!username || !fname || !lname || !email || !password || !confirmPassword || !phoneNum) {
       Alert.alert("Missing fields", "Please fill out all required fields.");
+      return;
+    }
+
+    if (username.length < 6) {
+      Alert.alert("Invalid Username", "Username must be at least 6 characters.");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Invalid Password", "Password must be at least 6 characters.");
+      return;
+    }
+
+    //this takes away the special characters from phone number for the backend 
+    const cleanedPhone = phoneNum.replace(/\D/g, "");
+    if (cleanedPhone.length !== 10) {
+      Alert.alert("Invalid Phone Number", "Please enter a complete 10-digit phone number.");
       return;
     }
 
@@ -76,11 +96,10 @@ export default function Register() {
       return;
     }
 
-    //this takes away the special characters from phone number for the backend 
-    const cleanedPhone = phoneNum.replace(/\D/g, "");
+  
 
     try {
-      const response = await fetch(`${API_URL}/users`, {
+      const response = await fetch(`${API_URL}/user/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -181,13 +200,13 @@ export default function Register() {
                       placeholderTextColor="#666"
                       style={styles.input}
                       value={username}
-                      //onChangeText={setUsername}
                       onChangeText={(text) => {setUsername(text);setUsernameError(""); }}
                       autoCapitalize="none"
                       maxLength={35}/>
 
                       {usernameError !== "" && (<Text style={styles.errorText}>{usernameError}</Text>)}
               </View>
+              {!isUsernameValid && (<Text style={styles.errorText}>Usernamemust be at least 6 characters</Text>)}
               
               <View style={styles.inputWrapper}> 
                   <Ionicons name="mail-outline" size={20} color="#666" style={styles.icon} /> 
@@ -199,11 +218,11 @@ export default function Register() {
                       value={email}
                       onChangeText={setEmail}
                       autoCapitalize="none"
-                      keyboardType="email-address"/>
-
-                      {email.length > 0 && !emailValid && (<Text style={styles.errorText}>Invalid email address</Text>)}
-                      {email.length > 0 && emailValid && (<Text style={styles.successText}>Valid email address</Text>)}
+                      keyboardType="email-address"
+                      />
               </View>
+              {email.length > 0 && !emailValid && (<Text style={styles.errorText}>Invalid email address</Text>)}
+              {email.length > 0 && emailValid && (<Text style={styles.successText}>Valid email address</Text>)}
               
 
               <View style={styles.inputWrapper}> 
@@ -215,10 +234,10 @@ export default function Register() {
                       style={styles.input}
                       value={phoneNum}
                       onChangeText={(text) => setPhoneNum(formatPhoneNumber(text))}
-                      keyboardType="phone-pad"
-                      maxLength={14}/>
-                     
+                      //keyboardType="phone-pad"
+                      maxLength={14}/>    
               </View>
+              {!isPhoneValid && (<Text style={styles.errorText}>Phone number must be 10-digits</Text>)}
               
               <View style={styles.inputWrapper}>
                   <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.icon} />
@@ -226,16 +245,18 @@ export default function Register() {
                   <TextInput //this is where users will enter their password
                     placeholder=" Password"
                     placeholderTextColor="#666"
-                    //secureTextEntry
                     secureTextEntry={!showPassword}
                     style={styles.input}
                     value={password}
-                    onChangeText={setPassword} />
+                    onChangeText={setPassword} 
+                    />
               
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                     <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20}  color="#666" />
                   </TouchableOpacity>
+                  
               </View>
+              {!isPasswordValid && (<Text style={styles.errorText}>Password must be at least 6 characters</Text>)}
 
 
               <View style={styles.inputWrapper}>
@@ -244,7 +265,6 @@ export default function Register() {
                   <TextInput //this is where users will confirm their password
                     placeholder="Confirm Password"
                     placeholderTextColor="#666"
-                    //secureTextEntry
                     secureTextEntry={!showConfirmPassword}
                     style={styles.input}
                     value={confirmPassword}

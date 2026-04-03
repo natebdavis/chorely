@@ -1,6 +1,5 @@
 import {
   ImageBackground,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import { ChoreItem } from "../../components/ChoreItem";
 import type { Chore } from "../../components/ChoreContext";
+import { useAuth } from "../../components/AuthContext";
 
 type BackendChore = {
   choreid: number | null;
@@ -21,8 +21,14 @@ type BackendChore = {
   status: string | null;
 };
 
-const API_BASE =
-  Platform.OS === "android" ? "https://chorely.onrender.com" : "https://chorely.onrender.com";
+type Member = {
+  userid: number;
+  username: string;
+  fname: string;
+  lname: string;
+};
+
+const API_BASE = "https://chorely-beta-release.onrender.com";
 
 function formatUnixTimestamp(timestamp: number | null) {
   if (!timestamp) {
@@ -39,14 +45,59 @@ function formatUnixTimestamp(timestamp: number | null) {
 }
 
 export default function ChoreBoard() {
+  const { user } = useAuth();
   const [chores, setChores] = useState<Chore[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDropdownFor, setShowDropdownFor] = useState<string | null>(null);
+
+  const handleStatusChange = async (choreId: string, newStatus: string, assigneeId?: number | null) => {
+    try {
+      const response = await fetch(`${API_BASE}/chores/${choreId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          assignee_id: assigneeId ?? null,
+        }),
+      });
+
+      if (response.ok) {
+        const assignedMember = members.find((m) => m.userid === assigneeId);
+        setChores((prev) =>
+          prev.map((c) =>
+            c.id === choreId
+              ? {
+                  ...c,
+                  status: newStatus,
+                  assignedTo: assignedMember
+                    ? `${assignedMember.fname} ${assignedMember.lname}`
+                    : c.assignedTo,
+                }
+              : c
+          )
+        );
+      }
+    } catch (e) {
+      // silently fail
+    }
+  };
 
   useEffect(() => {
+    if (!user?.householdid) {
+      setLoading(false);
+      return;
+    }
+
     async function loadChores() {
       try {
-        const response = await fetch(`${API_BASE}/chores/1`);
+        const response = await fetch(`${API_BASE}/chores`, {
+          headers: { Authorization: `Bearer ${user?.token}` },
+        });
 
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`);
@@ -74,35 +125,54 @@ export default function ChoreBoard() {
       }
     }
 
+    async function loadMembers() {
+      try {
+        const response = await fetch(`${API_BASE}/households/members`, {
+          headers: { Authorization: `Bearer ${user?.token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setMembers(data);
+        }
+      } catch (e) {
+        // silently fail
+      }
+    }
+
     loadChores();
+    loadMembers();
   }, []);
 
   return (
     <ImageBackground
-      source={require("../../assets/images/background.png")} 
+      source={require("../../assets/images/background.png")}
       style={styles.background}
       resizeMode="cover"
     >
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Chore Board</Text>
 
-        {loading ? (
+        {!user?.householdid ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Loading chore...</Text>
+            <Text style={styles.emptyTitle}>No Household</Text>
             <Text style={styles.emptyText}>
-              Trying to load one chore from the backend.
+              You must join a household to view chores.
             </Text>
+          </View>
+        ) : loading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Loading chores...</Text>
           </View>
         ) : error ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Backend request failed</Text>
+            <Text style={styles.emptyTitle}>Failed to load chores</Text>
             <Text style={styles.emptyText}>{error}</Text>
           </View>
         ) : chores.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No backend chores found</Text>
+            <Text style={styles.emptyTitle}>No chores yet</Text>
             <Text style={styles.emptyText}>
-              `GET /chores/1` returned an empty list.
+              Create a chore to get started.
             </Text>
           </View>
         ) : (
@@ -111,6 +181,10 @@ export default function ChoreBoard() {
               key={chore.id}
               chore={chore}
               onComplete={() => {}}
+              onStatusChange={handleStatusChange}
+              showDropdownFor={showDropdownFor}
+              onToggleDropdown={setShowDropdownFor}
+              members={members}
             />
           ))
         )}

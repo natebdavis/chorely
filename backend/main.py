@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 from app.controllers.chore_controller import router as chore_router
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.user_controller import router as user_router
@@ -26,4 +27,5 @@ app.include_router(notification_router)
 @app.get("/")
 def root():
     return {"message": "Beta Release Version -Backend running"}
+
 

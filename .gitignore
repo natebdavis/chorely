@@ -66,6 +66,16 @@ expo-env.d.ts
 
 # dataconnect generated files
 .dataconnect
+
+# Expo
+.expo/
+app-example/
+
+# Virtual environment
+.venv/
+
+# macOS
+.DS_Store
 backend/__pycache__/main.cpython-312.pyc
 backend/app/__pycache__/chore.cpython-312.pyc
 backend/app/__pycache__/database_test.cpython-312.pyc

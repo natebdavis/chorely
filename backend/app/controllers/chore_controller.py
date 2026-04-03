@@ -236,8 +236,7 @@ def create_chore(payload: ChoreCreateRequest, current_user: UserResponse = Depen
         )
 
         chorelist = database.add_chore(householdid, chore)
-        chore = Chore.from_dict(chorelist[0])
-
+        chore = database.get_chore(chorelist[0]["choreid"])
         return ChoreResponse(**chore.createBaseModel())
 
     except HTTPException:
