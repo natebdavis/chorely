@@ -1,6 +1,13 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, status
 from typing import List
+
+from app.notification import NotificationCreateRequest, NotificationResponse
+from app.database import (
+    get_notifications as db_get_notifications,
+    get_notification as db_get_notification,
+    add_notification as db_add_notification,
+    remove_notification as db_remove_notification,
+)
 
 """
 Module for managing Notification Controller operations.
@@ -10,165 +17,61 @@ for creating, retrieving, and deleting notifications.
 Contributors: Edmund Krajewski
 """
 
-router = APIRouter(tags=["notifications"])
+router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-class NotificationCreateRequest(BaseModel):
-    """
-    Request body schema for creating a new Notification.
-
-    Inputs:
-        notificationid: Unique identifier for the Notification.
-        choreid: Identifier of the Chore associated with the Notification.
-        time: Datetime string representing when the Notification should occur.
-
-    Output:
-        JSON body representing a Notification creation request.
-    """
-    notificationid: int
-    choreid: int
-    time: str
-
-
-class NotificationResponse(BaseModel):
-    """
-    Response schema returned for Notification-related API requests.
-
-    Outputs:
-        notificationid: Unique identifier for the Notification.
-        choreid: Identifier of the associated Chore.
-        time: Datetime string representing when the Notification occurs.
-    """
-    notificationid: int
-    choreid: int
-    time: str
-
-
-class TempNotification(BaseModel):
-    """
-    Temporary Notification schema used for in-memory backend testing.
-
-    Inputs:
-        notificationid: Unique identifier for the Notification.
-        choreid: Identifier of the associated Chore.
-        time: Datetime string representing when the Notification occurs.
-
-    Output:
-        Temporary Notification object for testing storage and retrieval.
-    """
-    notificationid: int
-    choreid: int
-    time: str
-
-
-"""
-Temporary in-memory storage for Notifications.
-
-This acts as a placeholder until persistent database-backed
-Notification storage is implemented.
-"""
-fake_notifications: List[TempNotification] = [
-    TempNotification(notificationid=1, choreid=1, time="2026-03-15T18:00:00"),
-    TempNotification(notificationid=2, choreid=2, time="2026-03-16T12:00:00"),
-]
-
-
-@router.get("/notifications", response_model=List[NotificationResponse])
+@router.get("", response_model=List[NotificationResponse])
 def get_notifications():
     """
-    Retrieve all Notifications currently stored.
-
-    Inputs:
-        None
-
-    Outputs:
-        List of all Notifications currently in the system.
+    Retrieve all notifications.
     """
-    return [
-        NotificationResponse(
-            notificationid=notification.notificationid,
-            choreid=notification.choreid,
-            time=notification.time,
-        )
-        for notification in fake_notifications
-    ]
+    notifications = db_get_notifications()
+    return notifications or []
 
 
-@router.get("/notifications/{notificationid}", response_model=NotificationResponse)
+@router.get("/{notificationid}", response_model=NotificationResponse)
 def get_notification(notificationid: int):
     """
-    Retrieve a single Notification by notificationid.
-
-    Inputs:
-        notificationid: Unique identifier of the Notification to retrieve.
-
-    Outputs:
-        NotificationResponse for the requested Notification.
-
-    Raises:
-        HTTPException(404) if the Notification does not exist.
+    Retrieve a single notification by notificationid.
     """
-    for notification in fake_notifications:
-        if notification.notificationid == notificationid:
-            return NotificationResponse(
-                notificationid=notification.notificationid,
-                choreid=notification.choreid,
-                time=notification.time,
-            )
+    notification = db_get_notification(notificationid)
 
-    raise HTTPException(status_code=404, detail="Notification not found")
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found",
+        )
+
+    return notification
 
 
-@router.post("/notifications", response_model=NotificationResponse)
-def create_notification(request: NotificationCreateRequest):
+@router.post("", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED)
+def create_notification(payload: NotificationCreateRequest):
     """
-    Create a new Notification.
-
-    Inputs:
-        request: NotificationCreateRequest containing the new Notification data.
-
-    Outputs:
-        NotificationResponse representing the newly created Notification.
-
-    Raises:
-        HTTPException(400) if the Notification ID already exists.
+    Create a new notification.
     """
-    for notification in fake_notifications:
-        if notification.notificationid == request.notificationid:
-            raise HTTPException(status_code=400, detail="Notification already exists")
+    created = db_add_notification(payload)
 
-    new_notification = TempNotification(
-        notificationid=request.notificationid,
-        choreid=request.choreid,
-        time=request.time,
-    )
+    if not created:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create notification",
+        )
 
-    fake_notifications.append(new_notification)
-
-    return NotificationResponse(
-        notificationid=new_notification.notificationid,
-        choreid=new_notification.choreid,
-        time=new_notification.time,
-    )
+    return created
 
 
-@router.delete("/notifications/{notificationid}")
+@router.delete("/{notificationid}", status_code=status.HTTP_200_OK)
 def delete_notification(notificationid: int):
     """
-    Delete a Notification by notificationid.
-
-    Inputs:
-        notificationid: Unique identifier of the Notification to delete.
-
-    Outputs:
-        Success message if deletion succeeds.
-
-    Raises:
-        HTTPException(404) if the Notification does not exist.
+    Delete a notification by notificationid.
     """
-    for i, notification in enumerate(fake_notifications):
-        if notification.notificationid == notificationid:
-            fake_notifications.pop(i)
-            return {"message": "Notification deleted successfully"}
+    deleted = db_remove_notification(notificationid)
 
-    raise HTTPException(status_code=404, detail="Notification not found")
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found",
+        )
+
+    return {"message": "Notification deleted successfully"}
