@@ -4,13 +4,14 @@ from supabase import Client, create_client
 from jose import JWTError, jwt
 from fastapi import Depends
 
-from app.chore_v2 import CHORE_TABLE_NAME, Chore_Col_Name, ChoreResponse, create_ChoreResponse, ChoreCreateRequest
+from app.chore_v2 import CHORE_TABLE_NAME, Chore_Col_Name, ChoreResponse, create_ChoreResponse, ChoreCreateRequest, Status
 from app.user_v2 import User_Col_Name, USER_TABLE_NAME, UserResponse, create_UserResponse, search_user, UserCreateRequest, UsersToken
 from app.utils import load_env_variables, get_password_hash, oauth2_scheme, credentials_exception, verify_password
+from app.household import HOUSEHOLD_TABLE_NAME, Household_Col_Name, HouseholdResponse
 
 """
 Module for managing Database operations.
-Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
+Contributers: Gilligan Berlinski, Edmund Krajewski
 """
 
 def get_client() -> Client:
@@ -353,35 +354,200 @@ def update_chore(householdid: int, choreid: int, status: Union[str, None] = None
     return None if not response.data else create_ChoreResponse(response.data)
 
 def get_all_requested_chores(userid: int, client: Union[Client, None] = None) -> Union[Iterable[ChoreResponse], None]:
-    pass
+    """
+    Given a userid, return all chores that are requested by the user.
+    
+    Output: 
+        A iterable of `chores` that are requested by the user.
+    """
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table("chores")
+        .select("*")
+        .eq(Chore_Col_Name.requester.value, userid)
+        .execute()
+    )
+
+    return [create_ChoreResponse(chore_data) for chore_data in response.data] if response.data else None
 
 def get_all_in_progress_assigned_chores(userid: int, client: Union[Client, None] = None) -> Union[Iterable[ChoreResponse], None]:
-    pass
+    """
+    Given a userid, return all chores that are assigned to the user and that are in progress.
+    
+    Output: 
+        A iterable of `chores` that are assigned to the user and in progress.
+    """
+
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table("chores")
+        .select("*")
+        .eq(Chore_Col_Name.assignee.value, userid)
+        .eq(Chore_Col_Name.status.value, Status.IN_PROGRESS.name)
+        .execute()
+    )
+
+    return [create_ChoreResponse(chore_data) for chore_data in response.data] if response.data else None
 
 def get_all_completed_chores(userid: int, client: Union[Client, None] = None) -> Union[Iterable[ChoreResponse], None]:
-    pass
+    """
+    Given a userid, return all chores that are assigned to the user and that are completed.
+    
+    Output: 
+        A iterable of `chores` that are assigned to the user and completed.
+    """
+
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table("chores")
+        .select("*")
+        .eq(Chore_Col_Name.assignee.value, userid)
+        .eq(Chore_Col_Name.status.value, Status.COMPLETE.name)
+        .execute()
+    )
+
+    return [create_ChoreResponse(chore_data) for chore_data in response.data] if response.data else None
 
 def get_householdid(userid: int, client: Union[Client, None] = None) -> Union[int, None]:
-    pass
+    """
+    Get the householdid of a user given their userid. Returns None if user does not belong to a household.
+    
+    Output:
+        The householdid of the user, or None if the user does not belong to a household.
+    """
+    if client is None:
+        client = get_client()
+
+    user = get_user(userid=userid, client=client)
+    if user:
+        return user.householdid
+    else:
+        return None
 
 def household_exists(householdid: int, client: Union[Client, None] = None) -> bool:
-    pass
+    """Check if a household exists by seeing if any user belongs to it."""
+    if client is None:
+        client = get_client()
 
-def join_household(userid: int, householdid: int, client: Union[Client, None] = None):
-    pass
+    response = (
+        client
+        .table("users")
+        .select(User_Col_Name.userid.value)
+        .eq(User_Col_Name.householdid.value, householdid)
+        .limit(1)
+        .execute()
+    )
+
+    return bool(response.data)
+
+def join_household(userid: int, householdid: int, client: Union[Client, None] = None) -> Union[UserResponse, None]:
+    """
+    Assign a user to a household.
+    
+    Output:
+        Returns updated user data if successful, None if user is not found."""
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table(USER_TABLE_NAME)
+        .update({User_Col_Name.householdid.value: householdid})
+        .eq(User_Col_Name.userid.value, userid)
+        .execute()
+    )
+
+    return create_UserResponse(response.data) if response.data else None
 
 def leave_household(userid: int, client: Union[Client, None] = None):
-    pass
+    """
+    Remove a user from their current household by setting householdid to null. Deletes the household if no members remain after the user leaves.
+    Output:
+        Returns updated user data if successful, None if user is not found.
+    """
+    if client is None:
+        client = get_client()
+
+    user = get_user(userid, client)
+    if not user:
+        return None
+
+    old_householdid = user.householdid
+
+    response = (
+        client
+        .table(USER_TABLE_NAME)
+        .update({User_Col_Name.householdid.value: None})
+        .eq(User_Col_Name.userid.value, userid)
+        .execute()
+    )
+
+    if old_householdid is not None:
+        delete_household_if_empty(old_householdid, client)
+
+    return create_UserResponse(response.data) if response.data else None
 
 def delete_household_if_empty(householdid: int, client: Union[Client, None] = None) -> bool:
-    pass
+    """
+    If no users remain in a household, clean up related chores.
+    Since there is no standalone households table yet, this means removing
+    chores associated with that household.
+    
+    Output:
+        Returns True if household was deleted, False if household still has members.
+    """
+    if client is None:
+        client = get_client()
+
+    members = get_users(householdid, client)
+    if members:
+        return False
+
+    client.table(CHORE_TABLE_NAME).delete().eq(Chore_Col_Name.householdid.value, householdid).execute()
+    return True
 
 def get_household_member_count(householdid: int, client: Union[Client, None] = None) -> int:
-    pass
+    """
+    Return number of users in a household.
+    
+    Output:
+        The number of members in the household. Returns 0 if household has no members or does not exist.
+    """
+    members = get_users(householdid, client)
+    return len(members) if members else 0
 
-def create_household_db(client: Union[Client, None] = None):
-    pass
+def create_household_db(client: Union[Client, None] = None) -> Union[HouseholdResponse, None]:
+    """
+    create household in database
+    
+    Output:
+        Inserted row data returned from Supabase.
+    """
+    if client is None:
+        client = get_client()
+        
+    response = (
+        client
+        .table(HOUSEHOLD_TABLE_NAME)
+        .insert({})
+        .execute()
+    )
 
+    if response.data:
+        first = 0
+        members_count = get_household_member_count(response.data[first][Household_Col_Name.householdid.value], client)
+        return HouseholdResponse(householdid=response.data[first][Household_Col_Name.householdid.value], member_count=members_count)
+
+    return None
 
 class Notification:
     pass
