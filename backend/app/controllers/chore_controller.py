@@ -1,11 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 import datetime as DT
 
-import pytz
-from app.database import get_current_user
+from app.database import add_chore, get_chores, get_current_user, get_householdid, get_user, get_chore, remove_chore
 from app.user import UserResponse
-from app import database
-from app.chore import Chore, ChoreCreateRequest, ChoreDeleteRequest, ChoreResponse, ChoreUpdateRequest, Chore_Col_Name
+from app.chore import ChoreCreateRequest, ChoreDeleteRequest, ChoreResponse, ChoreUpdateRequest, create_ChoreCreateRequest
 
 """
 Module for managing Chore Controller operations.
@@ -37,6 +35,7 @@ def update_chore(choreid: int, payload: ChoreUpdateRequest, current_user: UserRe
         HTTPException(500) if update fails.
     """
     try:
+
         valid_statuses = {"UNASSIGNED", "IN_PROGRESS", "COMPLETE"}
 
         if payload.status is not None and payload.status not in valid_statuses:
@@ -46,7 +45,7 @@ def update_chore(choreid: int, payload: ChoreUpdateRequest, current_user: UserRe
             )
 
         if payload.assignee_id is not None:
-            assignee = database.get_user(payload.assignee_id)
+            assignee = get_user(userid=payload.assignee_id)
             if not assignee:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -63,8 +62,8 @@ def update_chore(choreid: int, payload: ChoreUpdateRequest, current_user: UserRe
                 detail="Status cannot be set to UNASSIGNED with an assignee"
             )
 
-        updated = database.update_chore(
-            household=current_user["householdid"],
+        updated = update_chore(
+            household=current_user.householdid,
             choreid=choreid,
             status=payload.status,
             assignee_id=payload.assignee_id,
@@ -76,14 +75,14 @@ def update_chore(choreid: int, payload: ChoreUpdateRequest, current_user: UserRe
                 detail="Chore not found"
             )
         
-        chore = database.get_chore(choreid)
+        chore = get_chore(choreid)
         if not chore:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Updated chore not found"
             )
         
-        return ChoreResponse(**chore.createBaseModel())
+        return chore
 
     except HTTPException:
         raise
@@ -110,8 +109,8 @@ def get_chore(choreid: int, current_user: UserResponse = Depends(get_current_use
         HTTPException(500) if retrieval fails.
     """
     try:
-        householdid = current_user["householdid"]
-        chore = database.get_chore(choreid)
+        householdid = current_user.householdid
+        chore = get_chore(choreid)
 
         if not chore:
             raise HTTPException(
@@ -124,7 +123,7 @@ def get_chore(choreid: int, current_user: UserResponse = Depends(get_current_use
                 detail="Chore not found in user's household"
             )
 
-        return ChoreResponse(**chore.createBaseModel())
+        return chore
 
     except HTTPException:
         raise
@@ -148,19 +147,16 @@ def get_household_chores(current_user: UserResponse = Depends(get_current_user))
         HTTPException(500) if retrieval fails.
     """
     try:
-        householdid = current_user["householdid"]
+        householdid = current_user.householdid
         if not householdid:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User has not joined a household"
             )
 
-        chores = database.get_chores(householdid)
+        chores = get_chores(householdid)
 
-        if not chores:
-            return []
-
-        return [ChoreResponse(**c.createBaseModel()) for c in chores]
+        return chores
 
     except Exception as e:
         raise HTTPException(
@@ -186,10 +182,10 @@ def create_chore(payload: ChoreCreateRequest, current_user: UserResponse = Depen
         HTTPException(500) if database insertion fails.
     """
 
-    householdid = current_user["householdid"]
+    householdid = current_user.householdid
 
     try:
-        requester = database.get_user(current_user["userid"])
+        requester = get_user(current_user.userid)
         if not requester:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -198,13 +194,13 @@ def create_chore(payload: ChoreCreateRequest, current_user: UserResponse = Depen
 
         assignee = None
         if payload.assignee_id is not None:
-            assignee = database.get_user(payload.assignee_id)
+            assignee = get_user(payload.assignee_id)
             if not assignee:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Assignee not found"
                 )
-            assignee_householdid = database.get_householdid(assignee.userid)
+            assignee_householdid = get_householdid(assignee.userid)
             if assignee_householdid != householdid:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -225,19 +221,9 @@ def create_chore(payload: ChoreCreateRequest, current_user: UserResponse = Depen
                 detail="Invalid due_date format. Use ISO format, e.g. 2026-03-20T18:00:00"
             )
 
-        chore = Chore(
-            name=payload.name,
-            description=payload.description,
-            due_date=due_date,
-            requester=requester,
-            choreid=None,
-            assignee=assignee,
-            request_date=None,
-        )
+        chore = create_ChoreCreateRequest(payload)
 
-        chorelist = database.add_chore(householdid, chore)
-        chore = database.get_chore(chorelist[0]["choreid"])
-        return ChoreResponse(**chore.createBaseModel())
+        return add_chore(chore)
 
     except HTTPException:
         raise
@@ -264,7 +250,7 @@ def delete_chore(payload: ChoreDeleteRequest, current_user: UserResponse = Depen
         HTTPException(500) if deletion fails.
     """
     try:
-        deleted = database.remove_chore(current_user["householdid"], payload.choreid)
+        deleted = remove_chore(current_user.householdid, payload.choreid)
 
         if not deleted:
             raise HTTPException(

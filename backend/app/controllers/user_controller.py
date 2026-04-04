@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
 
-from app.database import get_users, get_user, add_user, is_username_available, is_email_available, is_phone_num_available, get_current_user, get_householdid
-from app.user import User, UserResponse, UserCreateRequest
+from app.database import get_user, add_user, is_username_available, is_email_available, is_phone_num_available, get_current_user
+from app.user import UserResponse, UserCreateRequest
 from app.utils import get_password_hash
 
 """
@@ -30,19 +29,12 @@ def get_single_user(userid: int):
         HTTPException(404) if user is not found.
     """
 
-    user = get_user(userid)
+    user = get_user(userid=userid)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return UserResponse(
-        userid=user.userid,
-        username=user.username,
-        fname=user.fname,
-        lname=user.lname,
-        email=user.email,
-        phone_num=user.phone_num,
-    )
+    return user
 
 @router.get("", response_model=UserResponse, summary="Get my profile (protected)")
 def read_me(current_user: UserResponse = Depends(get_current_user)):
@@ -55,25 +47,11 @@ def read_me(current_user: UserResponse = Depends(get_current_user)):
     Outputs:
         UserResponse object containing the user's profile information.
     
-    Raises:        
-        HTTPException(404) if the user is not found. 
+    Raises:
+        HTTPException(401) if the token is invalid or if the user does not exist.
     """
 
-    userid = current_user["userid"]
-    user = get_user(userid)
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return UserResponse(
-        userid=user.userid,
-        username=user.username,
-        fname=user.fname,
-        lname=user.lname,
-        email=user.email,
-        phone_num=user.phone_num,
-        householdid=user.householdid
-    )
+    return current_user
 
 @router.post("/create")
 def create_user(request: UserCreateRequest):
@@ -101,17 +79,8 @@ def create_user(request: UserCreateRequest):
     
     hashed_password = get_password_hash(request.password)
 
-    user = User(
-        username=request.username,
-        passhash=hashed_password,
-        userid=0,  # placeholder until database assigns ID
-        fname=request.fname,
-        lname=request.lname,
-        email=request.email,
-        phone_num=request.phone_num,
-    )
-
-    response = add_user(user)
+    request.password = hashed_password
+    response = add_user(request)
 
     return {"message": "User created successfully", "userid": response[0]["userid"]}
 

@@ -44,5 +44,5 @@ def login_for_access_token(request: OAuth2PasswordRequestForm = Depends()):
 
 
 @router.get("/me", response_model=UserResponse, summary="Get my profile (protected)")
-def read_me(current_user: UserResponse = Depends(get_current_user)):
+def read_me(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
     return current_user

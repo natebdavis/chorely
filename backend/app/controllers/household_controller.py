@@ -3,9 +3,8 @@ from typing import List
 
 from app.household import HouseholdResponse
 from app.database import get_household_member_count, get_current_user, get_householdid, join_household, create_household_db, get_users
-from app.user import UserResponse
-
 from app.database import join_household, leave_household, get_user, get_householdid, get_current_user, get_household_member_count
+from app.user import UserResponse
 from app.household import HouseholdJoinRequest, HouseholdLeaveRequest
 
 """
@@ -33,8 +32,7 @@ def get_household_users(current_user: UserResponse = Depends(get_current_user)):
         HTTPException(404) if no users exist for that household or if the household does not exist.
     """
 
-    userid = current_user["userid"]
-    householdid = current_user["householdid"]
+    householdid = current_user.householdid
 
     if not householdid:
         raise HTTPException(status_code=404, detail="User has not joined a household")
@@ -44,17 +42,7 @@ def get_household_users(current_user: UserResponse = Depends(get_current_user)):
     if not users:
         raise HTTPException(status_code=404, detail="No users in household found")
 
-    return [
-        UserResponse(
-            userid=u.userid,
-            username=u.username,
-            fname=u.fname,
-            lname=u.lname,
-            email=u.email,
-            phone_num=u.phone_num,
-        )
-        for u in users
-    ]
+    return users
 
 @router.get("", response_model=HouseholdResponse)
 def get_households(current_user: UserResponse = Depends(get_current_user)):
@@ -71,8 +59,7 @@ def get_households(current_user: UserResponse = Depends(get_current_user)):
         HTTPException(404) if the user has not joined a household.
     """
 
-    userid = current_user["userid"]
-    householdid = get_householdid(userid=userid)
+    householdid = current_user.householdid
 
     if not householdid:
         raise HTTPException(status_code=404, detail="User has not joined a household")
@@ -102,9 +89,10 @@ def create_household(current_user: UserResponse = Depends(get_current_user)):
     if householdid:
         raise HTTPException(status_code=404, detail="User is already apart of an existing household.")
 
+    first = 0
     new_household = create_household_db()
-    householdid = new_household[0]["householdid"]
-    join_household(current_user["userid"], householdid)
+    householdid = new_household[first]["householdid"]
+    join_household(current_user.userid, householdid)
 
     return HouseholdResponse(
         householdid=householdid,
@@ -127,7 +115,7 @@ def create_membership(request: HouseholdJoinRequest, current_user: UserResponse 
         HTTPException(404) if the user being added does not exist.
     """
     
-    current_userid = current_user["userid"]
+    current_userid = current_user.userid
     current_householdid = get_householdid(userid=current_userid)
 
     if not current_householdid:
@@ -167,7 +155,7 @@ def delete_membership(request: HouseholdLeaveRequest, current_user: UserResponse
         HTTPException(404) if the user does not exist.
     """
 
-    current_userid = current_user["userid"]
+    current_userid = current_user.userid
 
     if current_userid != request.userid:
         raise HTTPException(status_code=400, detail="Unauthorized user attempting to remove another user from household.")

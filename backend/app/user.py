@@ -1,9 +1,7 @@
-from typing import Optional
-import re
 from enum import Enum
-from app.utils import CreateFromDict
 from pydantic import BaseModel, EmailStr
 from typing import Union
+from collections.abc import Iterable
 
 
 """
@@ -36,13 +34,13 @@ class UserCreateRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
-    userid: Optional[int] = None
+    userid: int
     username: str
     fname: str
     lname: str
     email: Union[EmailStr, None] = None
     phone_num: Union[int, None] = None
-    householdid: Optional[int] = None
+    householdid: Union[int, None] = None
 
 class UserInUpdate(BaseModel):
     """
@@ -56,6 +54,7 @@ class UserInUpdate(BaseModel):
         lname: Updated last name of the User.
         email: Updated email address of the User.
         phone_num: Updated optional phone number.
+        householdid: Updated householdid
     """
 
     userid: int
@@ -65,8 +64,9 @@ class UserInUpdate(BaseModel):
     lname: Union[str, None] = None
     email: Union[EmailStr, None] = None
     phone_num: Union[int, None] = None
+    householdid: Union[int, None] = None
 
-class UserWithToken(BaseModel):
+class UsersToken(BaseModel):
     """
     Response schema for User-related API requests that include an authentication token.
     
@@ -76,6 +76,8 @@ class UserWithToken(BaseModel):
     """
     access_token: str
     token_type: str
+
+USER_TABLE_NAME = "users"
 
 class User_Col_Name(Enum):
     userid = "userid"
@@ -87,86 +89,50 @@ class User_Col_Name(Enum):
     phone = "phone"
     householdid = "householdid"
 
-class User(CreateFromDict):
-    """User."""
+def create_UserCreateRequest(data: dict) -> UserCreateRequest:
+    return UserCreateRequest(
+        username=data[User_Col_Name.username],
+        password=data[User_Col_Name.passhash],
+        fname=data[User_Col_Name.fname],
+        lname=data[User_Col_Name.lname],
+        email=data[User_Col_Name.email],
+        phone_num=data[User_Col_Name.phone]
+    )
 
-    username: str
-    fname: str
-    lname: str
-    phone_num: Optional[int]
-    """Optional information, user can attach their phone number to their account."""
-    _EMAIL_REGULAR_EXPRESSION = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}"
-    """Regular expression for validating email."""
+def create_UserResponse(data: dict) -> UserResponse:
+    return UserResponse(
+        userid=data[User_Col_Name.userid],
+        username=data[User_Col_Name.username],
+        fname=data[User_Col_Name.fname],
+        lname=data[User_Col_Name.lname],
+        email=data[User_Col_Name.email],
+        phone_num=data[User_Col_Name.phone],
+        householdid=data[User_Col_Name.householdid])
 
-    def __init__(self, username: str, passhash: str, userid: int, fname: str, lname: str, email: str, 
-                 phone_num: Optional[int] = None, householdid: Optional[int] = None):
-        """Constructor for User Class.
-        Inputs: `email` will be checked if it is a valid email, if not then it is set to null.
-        `phone_num` can be null or have a value upon creation of the user object.
-        Output: `User` Object
-        """
-        self.username = username
-        self.passhash = passhash
-        self.userid = userid
-        self.fname = fname
-        self.lname = lname
-        self.phone_num = phone_num
-        self.email = email if self.__isValidEmail(email) else None
-        self.householdid = householdid
+def create_UserInUpdate(data: dict) -> UserInUpdate:
+    return UserInUpdate(
+        userid=data[User_Col_Name.userid],
+        username=data[User_Col_Name.username],
+        password=data[User_Col_Name.passhash],
+        fname=data[User_Col_Name.fname],
+        lname=data[User_Col_Name.lname],
+        email=data[User_Col_Name.email],
+        phone_num=data[User_Col_Name.phone],
+        householdid=data[User_Col_Name.householdid])
 
-    @classmethod
-    def from_dict(cls, user_dict: dict):
-        """Alternate Constructor for `User`
-        Input: Dictionary with all values assoicated with a `User`"""
-        userid = user_dict[User_Col_Name.userid.value]
-        username = user_dict[User_Col_Name.username.value]
-        passhash = user_dict[User_Col_Name.passhash.value]
-        userid = user_dict[User_Col_Name.userid.value]
-        fname = user_dict[User_Col_Name.fname.value]
-        lname = user_dict[User_Col_Name.lname.value]
-        email = user_dict[User_Col_Name.email.value]
-        phone = user_dict[User_Col_Name.phone.value]
-        householdid = user_dict[User_Col_Name.householdid.value]
+def create_UsersToken(data: dict) -> UsersToken:
+    return UsersToken(
+        access_token=data["access_token"],
+        token_type=data["token_type"]
+    )
 
-        return cls(username, passhash, userid, fname, lname, email = email, phone_num = phone, householdid = householdid)
-    
-    @property
-    def full_name(self) -> str:
-        """Return the user's full name."""
-        return f"{self.fname} {self.lname}"
+def get_full_name(user: UserResponse) -> str:
+    return user.fname + " " + user.lname
 
-    @property
-    def email(self) -> str:
-        return self._email
+def search_user(userid: int, users: Iterable[UserResponse]) -> Union[UserResponse, None]:
 
-    @email.setter
-    def email(self, email) -> bool:
-        """Setter for `email` if a valid email is given change the email to the new one, if not keep
-        the original email.
-        Output: `True` if was able to change email to new value, `False` if otherwise."""
-        if self.__isValidEmail(email):
-            self._email = email
-            return True
-        else:
-            return False
+    for user in users:
+        if UserResponse.userid == userid:
+            return user
         
-    def __isValidEmail(self, email: str) -> bool:
-         """Private Method for checking if email given is in a valid format.
-         Output: `True` if email is valid, `False` if otherwise."""
-         valid_email = re.match(self._EMAIL_REGULAR_EXPRESSION, email)
-         return True if valid_email else False
-    
-    def createResponseModel(self) -> UserResponse:
-        return {
-            "userid": self.userid,
-            "username": self.username,
-            "fname": self.fname,
-            "lname": self.lname,
-            "email": self.email,
-            "phone_num": self.phone_num,
-            "householdid": self.householdid
-        }
-    
-    def __eq__(self, other: "User"):
-        return (self.username, self.userid, self.fname, self.lname, self.email, self.phone_num, self.householdid) ==\
-            (other.username, other.userid, other.fname, other.lname, other.email, other.phone_num, other.householdid)
+    return None
