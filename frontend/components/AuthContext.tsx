@@ -60,11 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const tokenData = await tokenResponse.json();
       const token = tokenData.access_token;
 
-<<<<<<< HEAD
       // GET /user with token to get userid, username, householdid
-=======
-      // GET /auth/me with token to get userid, username, householdid
->>>>>>> 3a59b02f32a3758658a8c1442b295bd695d4a856
       const meResponse = await fetch(`${API_URL}/user`, {
         headers: { Authorization: `Bearer ${token}` },
       });
