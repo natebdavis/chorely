@@ -7,6 +7,8 @@ Module for managing a household.
 Contributers: Nathaniel Davis, Edmund Krajewski
 """
 
+HOUSEHOLD_TABLE_NAME = "households"
+
 class Household_Col_Name(Enum):
     householdid = "householdid"
 

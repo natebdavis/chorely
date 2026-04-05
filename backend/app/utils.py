@@ -1,19 +1,12 @@
-from abc import ABC, abstractmethod
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+from jose import jwt
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import pathlib
 import os
 from pydantic import BaseModel
 from fastapi.security import OAuth2PasswordBearer
-
-class CreateFromDict(ABC): 
-    '''Interface used for data classes that can be created using a dictionary.'''
-    
-    @abstractmethod
-    def from_dict(self):
-        pass
+from fastapi import HTTPException, status
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -68,5 +61,9 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Model for data contained in JWT token."""
     username: str | None = None
+
+credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},)
 
 

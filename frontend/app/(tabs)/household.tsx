@@ -13,8 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from "react-native";
-
-const API_URL = "https://chorely-beta-release.onrender.com"
+const API_URL = "https://chorely-beta-release.onrender.com";
 
 import { useAuth } from "../../components/AuthContext";
 interface Member {

@@ -1,635 +1,96 @@
-from collections.abc import Iterable
-from typing import Optional
-from supabase import Client, create_client
-from fastapi import Depends, HTTPException, status
-from jose import JWTError, jwt
-
-from app.chore import Chore, Notification, Chore_Col_Name, Status
-from app.user import User, User_Col_Name, UserResponse
-from app.utils import CreateFromDict, load_env_variables, verify_password, TokenData, oauth2_scheme
-
-
 """
-Module for managing Database operations.
-Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
+Compatibility layer for database-related imports.
+
+This module re-exports repository functions from app.db so that
+existing imports like `from app.database import ...` continue to work
+while the codebase is being refactored.
+
+Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
 """
 
-def get_client() -> Client:
-    """
-    Creates a client to connect with the Supabase Database.
-
-    Output: 
-        A Supabase Client object that can be used to interact with the database.
-
-    Raises:
-        ValueError: if required environment variables are missing.
-        Exception: if client creation fails.
-    """
-
-    env = load_env_variables()
-    supabase_url = env["SUPABASE_URL"]
-    service_key = env["SERVICE_KEY"]
-
-    if supabase_url is None:
-        raise ValueError("SUPABASE_URL not found in .env")
-    if service_key is None:
-        raise ValueError("SERVICE_KEY not found in .env")
-
-    client = create_client(supabase_url, service_key)
-    return client
-
-def _get_data_type_list_from_response(data: Optional[Iterable[dict]], 
-                                 data_type: CreateFromDict) -> Optional[Iterable[CreateFromDict]]:
-    """
-    Helper Function used to create a list of Data Objects given a response from a query.
-
-    Input: 
-        `data` an iterable of dictionaries that hold the data of each data object.
-        `data_type` the class type that is being represented in the list of dictionaries.
-    Output: 
-        An iterable of data_type objects created using the list of dictionaries. If the input data is None, returns None.
-    """
-
-    data_type_list = []
-    if data:
-        for entry in data:
-            data_type_inst = data_type.from_dict(entry)
-            data_type_list.append(data_type_inst)
-        return data_type_list
-    else:
-        return None
-    
-def _select_all_where_equals_query(table_name: str, col_name: str, value, 
-                                   client: Optional[Client] = None) -> Optional [list[dict]]:
-    """
-    Helper Function used to select all data from a tables where one column equals the value given.
-    
-    Input:
-        table_name: The name of the table to query.
-        col_name: The name of the column to check for equality.
-        value: The value to check for equality in the specified column.
-        client: Optional Supabase client. If not provided, a new client will be created.
-    
-    Output:
-        A list of dictionaries representing the rows in the table where the specified column equals the given value
-    """
-    
-    if client is None:   
-        client = get_client()
-
-    response = client.table(table_name).select("*").eq(col_name, value).execute()
-
-    return response.data
-
-def is_username_available(username: str, client: Optional[Client] = None) -> bool:
-    """
-    Check if a username is available for registration.
-
-    Output: 
-        `True` if the username is not taken, `False` otherwise."""
-    if client is None:
-        client = get_client()
-
-    response = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
-    return not response
-
-def is_email_available(email: str, client: Optional[Client] = None) -> bool:
-    """
-    Check if an email is available for registration.
-
-    Output: 
-        `True` if the email is not taken, `False` otherwise."""
-    if client is None:
-        client = get_client()
-
-    response = _select_all_where_equals_query("users", User_Col_Name.email.value, email, client)
-    return not response
-
-def is_phone_num_available(phone_num: int, client: Optional[Client] = None) -> bool:
-    """
-    Check if a phone number is available for registration.
-
-    Output: 
-        `True` if the phone number is not taken, `False` otherwise."""
-    if client is None:
-        client = get_client()
-
-    response = _select_all_where_equals_query("users", User_Col_Name.phone.value, phone_num, client)
-    return not response
-
-def get_user_by_username(username: str, client: Optional[Client] = None) -> Optional[User]:
-    """
-    Get a single `user` given a username.
-
-    Output: 
-        A `User` Object created using the first entry matching the username
-    """
-
-    if client is None:
-        client = get_client()
-
-    first = 0
-    user_data = _select_all_where_equals_query("users", User_Col_Name.username.value, username, client)
-    if not user_data:
-        return None
-    else:
-        return User.from_dict(user_data[first])
-    
-def authenticate_user(username: str, password: str, client: Optional[Client] = None) -> Optional[User]:
-    """
-    Authenticate a user given a username and password.
-
-    Output: 
-        A `User` Object if the username and password match, `False` otherwise.
-    """
-    user = get_user_by_username(username, client)
-    if not user:
-        return False
-    if not verify_password(password, user.passhash.strip()):
-        return False
-    return user
-
-async def get_current_user(client: Client = Depends(get_client), token: str = Depends(oauth2_scheme)) ->UserResponse:
-    """Get the current user given a JWT token.
-
-    Output: 
-        A `User` Object if the token is valid, raises an HTTPException otherwise.
-    Raises:
-        HTTPException(401) if the token is invalid or if the user does not exist.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    env = load_env_variables()
-    secret_key = env["SECRET_KEY"]
-    algorithm = env["ALGORITHM"]
-
-    try:
-        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-        username: str = payload.get("sub")
-        token_data = TokenData(username=username)
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    user = get_user_by_username(username=token_data.username, client=client)
-    if user is None:
-        raise credentials_exception
-    return user.createResponseModel()
-
-def get_user(userid: int, client: Optional[Client] = None) -> Optional[User]:
-    """
-    Get a single `user` given a userid.
-
-    Output: 
-        A `User` Object created using the first entry matching the userid
-    """
-
-    first = 0
-    user_data = _select_all_where_equals_query("users", User_Col_Name.userid.value, userid, client)
-    if user_data and user_data[first]:
-        return User.from_dict(user_data[first])
-    else:
-        return None
-
-def get_users(householdid: int, client: Optional[Client] = None) -> Optional[Iterable[User]]:
-    """
-    Get collection of all `users` in household.
-    
-    Output: 
-        A iterable of `users` that are in the specified household."""
-    
-    # Fetch all data from the 'users' table
-    data = _select_all_where_equals_query("users", User_Col_Name.householdid.value, householdid, client)
-
-    # The data is in response.data
-    return _get_data_type_list_from_response(data, User)
-
-def get_chore(choreid: int, client: Optional[Client] = None) -> Optional[Chore]:
-    """
-        Get a single `chore` given a choreid.
-
-    Output: 
-        A `Chore` Object created using the first entry matching the choreid"""
-
-    first = 0
-    chore_data = _select_all_where_equals_query("chores", Chore_Col_Name.choreid.value, choreid, client)
-    if chore_data and chore_data[first]:
-        userid_requester = chore_data[first][Chore_Col_Name.requester.value]
-        userid_assignee = chore_data[first][Chore_Col_Name.assignee.value]
-        requester = get_user(userid_requester, client)
-        assignee = get_user(userid_assignee, client) if userid_assignee else None
-        chore_data[first][Chore_Col_Name.requester.value] = requester
-        chore_data[first][Chore_Col_Name.assignee.value] = assignee
-        return Chore.from_dict(chore_data[first])
-    else:
-        return None
-
-def get_chores(householdid: int, client: Optional[Client] = None, 
-               users: Optional[Iterable[User]] = None) -> Optional[Iterable[Chore]]:
-    """
-    Get collection of all `chores` in household.
-    
-    Output: 
-    A iterable of `chores` that are in the specified household.
-    """
-
-    # Fetch all data from the 'chores' table
-    data = _select_all_where_equals_query("chores", Chore_Col_Name.householdid.value, householdid, client)
-
-    if not users:
-        users = get_users(householdid, client)
-
-    for entry in data:
-
-        userid_requester = entry[Chore_Col_Name.requester.value]
-        requester = None
-        for user in users:
-            if user.userid == userid_requester:
-                requester = user
-                break
-        # Check database for user if not in users list
-        if not requester:
-            userid_requester = entry[Chore_Col_Name.requester.value]
-            requester = get_user(userid_requester, client)
-
-        entry[Chore_Col_Name.requester.value] = requester
-        
-
-        # Assign User Object if assignee userid has a value
-        if entry[Chore_Col_Name.assignee.value]:
-
-            userid_assignee = entry[Chore_Col_Name.assignee.value]
-            assignee = None
-            for user in users:
-                if user.userid == userid_assignee:
-                    assignee = user
-                    break
-            # Check database for user if not in users list
-            if not assignee:
-                userid_assignee = entry[Chore_Col_Name.assignee.value]
-                assignee = get_user(userid_assignee, client)
-
-            entry[Chore_Col_Name.assignee.value] = assignee
-
-    # The data is in data
-    return _get_data_type_list_from_response(data, Chore)
-
-def add_user(user: User, client: Optional[Client] = None):
-    """
-    Add user to database
-
-    Output: 
-        Inserted row data returned from Supabase.
-    """
-
-    if client is None:
-        client = get_client()
-
-    data = {
-        User_Col_Name.username.value: user.username,
-        User_Col_Name.fname.value: user.fname,
-        User_Col_Name.lname.value: user.lname, 
-        User_Col_Name.email.value: user.email,
-        User_Col_Name.phone.value: user.phone_num,
-        User_Col_Name.passhash.value: user.passhash
-    }
-
-    response = client.table("users").insert(data).execute()
-
-    return response.data
-
-def remove_user(user: User, client: Optional[Client] = None) -> bool:
-
-    """
-    Removes user from database if user exists. Also removes all notifications associated with the user and sets
-    all chores assigned to or requested by the user to null. 
-    
-    Output: 
-        Returns True if user was removed, False if user did not exist in database.
-    """
-
-    if client is None:
-        client = get_client()
-
-    user_in_table = client.table("users").select("*").eq(User_Col_Name.userid.value, user.userid).maybe_single().execute()
-
-    if not user_in_table.data:
-        return False
-    
-    # client.table("notifications").delete().eq("userid", user.userid).execute()
-    client.table("chores").update({Chore_Col_Name.assignee.value: None}).eq(Chore_Col_Name.assignee.value, user.userid).execute()
-    client.table("chores").update({Chore_Col_Name.requester.value: None}).eq(Chore_Col_Name.requester.value, user.userid).execute()
-    client.table("users").delete().eq(User_Col_Name.userid.value, user.userid).execute()
-
-    return True
-
-def add_chore(household: int, chore: Chore, client: Optional[Client] = None):
-    """
-    Add chore to database.
-
-    Inputs:
-        household: Household ID the chore belongs to.
-        chore: Chore object to insert.
-        client: Optional Supabase client.
-
-    Output:
-        Inserted row data returned from Supabase.
-    """
-    if client is None:
-        client = get_client()
-
-    data = {
-        Chore_Col_Name.householdid.value: household,
-        Chore_Col_Name.cname.value: chore.name,
-        Chore_Col_Name.description.value: chore.description,
-        Chore_Col_Name.request_date.value: chore.request_date.isoformat(),
-        Chore_Col_Name.due_date.value: chore.due_date.isoformat(),
-        Chore_Col_Name.requester.value: chore.requester.userid,
-        Chore_Col_Name.assignee.value: chore.assignee.userid if chore.assignee else None,
-        Chore_Col_Name.status.value: chore.status.name,
-    }
-
-    response = client.table("chores").insert(data).execute()
-    return response.data
-
-
-def remove_chore(household: int, choreid: int, client: Optional[Client] = None):
-    """
-    Remove chore from database.
-
-    Inputs:
-        household: Household ID the chore belongs to.
-        choreid: ID of the chore to delete.
-        client: Optional Supabase client.
-
-    Output:
-        Deleted row data returned from Supabase.
-    """
-    if client is None:
-        client = get_client()
-
-    response = (
-        client
-        .table("chores")
-        .delete()
-        .eq(Chore_Col_Name.householdid.value, household)
-        .eq(Chore_Col_Name.choreid.value, choreid)
-        .execute()
-    )
-
-    return response.data
-
-def update_chore(
-    household: int,
-    choreid: int,
-    status: Optional[str] = None,
-    assignee_id: Optional[int] = None,
-    client: Optional[Client] = None
-):
-    """
-    Update chore data in database.
-
-    Inputs:
-        household: Household ID the chore belongs to.
-        choreid: Unique identifier of the chore.
-        status: Optional new status of the chore.
-        assignee_id: Optional new assignee user ID. Use None to unassign.
-        client: Optional Supabase client.
-
-    Output:
-        Updated row data returned from Supabase.
-    """
-    if client is None:
-        client = get_client()
-
-    data = {}
-
-    if status is not None:
-        data[Chore_Col_Name.status.value] = status
-
-    data[Chore_Col_Name.assignee.value] = assignee_id
-
-    response = (
-        client
-        .table("chores")
-        .update(data)
-        .eq(Chore_Col_Name.householdid.value, household)
-        .eq(Chore_Col_Name.choreid.value, choreid)
-        .execute()
-    )
-
-    return response.data
-
-def get_all_requested_chores(userid: int, client: Optional[Client] = None) -> Optional[Iterable[Chore]]:
-    """
-    Given a userid, return all chores that are requested by the user.
-    
-    Output: 
-        A iterable of `chores` that are requested by the user.
-    """
-    if client is None:
-        client = get_client()
-
-    response = (
-        client
-        .table("chores")
-        .select("*")
-        .eq(Chore_Col_Name.requester.value, userid)
-        .execute()
-    )
-
-    return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
-
-def get_all_in_progress_assigned_chores(userid: int, client: Optional[Client] = None) -> Optional[Iterable[Chore]]:
-    """
-    Given a userid, return all chores that are assigned to the user and that are in progress.
-    
-    Output: 
-        A iterable of `chores` that are assigned to the user and in progress.
-    """
-
-    if client is None:
-        client = get_client()
-
-    response = (
-        client
-        .table("chores")
-        .select("*")
-        .eq(Chore_Col_Name.assignee.value, userid)
-        .eq(Chore_Col_Name.status.value, Status.IN_PROGRESS.name)
-        .execute()
-    )
-
-    return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
-
-def get_all_completed_chores(userid: int, client: Optional[Client] = None) -> Optional[Iterable[Chore]]:
-    """
-    Given a userid, return all chores that are assigned to the user and that are completed.
-    
-    Output: 
-        A iterable of `chores` that are assigned to the user and completed.
-    """
-
-    if client is None:
-        client = get_client()
-
-    response = (
-        client
-        .table("chores")
-        .select("*")
-        .eq(Chore_Col_Name.assignee.value, userid)
-        .eq(Chore_Col_Name.status.value, Status.COMPLETE.name)
-        .execute()
-    )
-
-    return [Chore.from_dict(chore_data) for chore_data in response.data] if response.data else None
-
-def get_householdid(userid: int, client: Optional[Client] = None) -> Optional[int]:
-    """
-    Get the householdid of a user given their userid. Returns None if user does not belong to a household.
-    
-    Output:
-        The householdid of the user, or None if the user does not belong to a household.
-    """
-    user = get_user(userid=userid)
-    if user:
-        return user.householdid
-    else:
-        return None
-
-def household_exists(householdid: int, client: Optional[Client] = None) -> bool:
-    """Check if a household exists by seeing if any user belongs to it."""
-    if client is None:
-        client = get_client()
-
-    response = (
-        client
-        .table("users")
-        .select(User_Col_Name.userid.value)
-        .eq(User_Col_Name.householdid.value, householdid)
-        .limit(1)
-        .execute()
-    )
-
-    return bool(response.data)
-
-def get_household_members(householdid: int, client: Optional[Client] = None) -> Optional[Iterable[User]]:
-    """
-    Get all users belonging to a household.
-    
-    Output:
-        A iterable of `users` that are in the specified household. Returns None if household does not exist or has no members.
-    """
-    return get_users(householdid, client)
-
-def join_household(userid: int, householdid: int, client: Optional[Client] = None):
-    """
-    Assign a user to a household.
-    
-    Output:
-        Returns updated user data if successful, None if user is not found."""
-    if client is None:
-        client = get_client()
-
-    response = (
-        client
-        .table("users")
-        .update({User_Col_Name.householdid.value: householdid})
-        .eq(User_Col_Name.userid.value, userid)
-        .execute()
-    )
-
-    return response.data
-
-def leave_household(userid: int, client: Optional[Client] = None):
-    """
-    Remove a user from their current household by setting householdid to null. Deletes the household if no members remain after the user leaves.
-    Output:
-        Returns updated user data if successful, None if user is not found.
-    """
-    if client is None:
-        client = get_client()
-
-    user = get_user(userid, client)
-    if not user:
-        return None
-
-    old_householdid = user.householdid
-
-    response = (
-        client
-        .table("users")
-        .update({User_Col_Name.householdid.value: None})
-        .eq(User_Col_Name.userid.value, userid)
-        .execute()
-    )
-
-    if old_householdid is not None:
-        delete_household_if_empty(old_householdid, client)
-
-    return response.data
-
-def delete_household_if_empty(householdid: int, client: Optional[Client] = None) -> bool:
-    """
-    If no users remain in a household, clean up related chores.
-    Since there is no standalone households table yet, this means removing
-    chores associated with that household.
-    
-    Output:
-        Returns True if household was deleted, False if household still has members.
-    """
-    if client is None:
-        client = get_client()
-
-    members = get_users(householdid, client)
-    if members:
-        return False
-
-    client.table("chores").delete().eq(Chore_Col_Name.householdid.value, householdid).execute()
-    return True
-
-def get_household_member_count(householdid: int, client: Optional[Client] = None) -> int:
-    """
-    Return number of users in a household.
-    
-    Output:
-        The number of members in the household. Returns 0 if household has no members or does not exist.
-    """
-    members = get_users(householdid, client)
-    return len(members) if members else 0
-
-def create_household_db(client: Optional[Client] = None):
-    """
-    create household in database
-    
-    Output:
-        Inserted row data returned from Supabase.
-    """
-    if client is None:
-        client = get_client()
-        
-    response = (
-        client
-        .table("households")
-        .insert({})
-        .execute()
-    )
-
-    return response.data
-
-def add_notification(household: int, chore: Chore, notification: Notification):
-    """add notification to database"""
-    pass
-
-def update_notification(household: int, chore: Chore, notification: Notification):
-    """remove notification from database"""
-    pass
-
-def remove_notification(household: int, chore: Chore, notification: Notification):
-    """change notification data in database"""
-    pass
-
-
+from app.db.client import get_client
+
+from app.db.auth_repo import (
+    authenticate_user,
+    get_current_user,
+)
+
+from app.db.user_repo import (
+    add_user,
+    get_user,
+    get_users,
+    is_email_available,
+    is_phone_num_available,
+    is_username_available,
+    remove_user,
+)
+
+from app.db.chore_repo import (
+    add_chore,
+    get_all_completed_chores,
+    get_all_in_progress_assigned_chores,
+    get_all_requested_chores,
+    get_chore,
+    get_chores,
+    remove_chore,
+    update_chore,
+)
+
+from app.db.household_repo import (
+    create_household_db,
+    delete_household_if_empty,
+    get_household_member_count,
+    get_householdid,
+    household_exists,
+    join_household,
+    leave_household,
+)
+
+from app.db.notification_repo import (
+    add_notification,
+    get_notification,
+    get_notifications,
+    remove_notification,
+)
+
+__all__ = [
+    "get_client",
+
+    # auth
+    "authenticate_user",
+    "get_current_user",
+
+    # users
+    "add_user",
+    "get_user",
+    "get_users",
+    "is_email_available",
+    "is_phone_num_available",
+    "is_username_available",
+    "remove_user",
+
+    # chores
+    "add_chore",
+    "get_all_completed_chores",
+    "get_all_in_progress_assigned_chores",
+    "get_all_requested_chores",
+    "get_chore",
+    "get_chores",
+    "remove_chore",
+    "update_chore",
+
+    # households
+    "create_household_db",
+    "delete_household_if_empty",
+    "get_household_member_count",
+    "get_householdid",
+    "household_exists",
+    "join_household",
+    "leave_household",
+
+    # notifications
+    "add_notification",
+    "get_notification",
+    "get_notifications",
+    "remove_notification",
+]
