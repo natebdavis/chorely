@@ -9,7 +9,7 @@ from app.household import (
     Household_Col_Name,
     HouseholdResponse,
 )
-from app.user import USER_TABLE_NAME, User_Col_Name, UserResponse
+from app.user import USER_TABLE_NAME, User_Col_Name, UserResponse, create_UserResponse
 from app.chore import CHORE_TABLE_NAME, Chore_Col_Name
 
 """
@@ -18,6 +18,7 @@ Module for household-related database operations.
 Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
 """
 
+first = 0
 
 def get_householdid(
     userid: int,
@@ -89,16 +90,10 @@ def join_household(
     rows = response.data
     if not rows:
         return None
+    
+    row = rows[first]
 
-    return UserResponse(
-        userid=rows[0][User_Col_Name.userid.value],
-        username=rows[0][User_Col_Name.username.value],
-        fname=rows[0][User_Col_Name.fname.value],
-        lname=rows[0][User_Col_Name.lname.value],
-        email=rows[0][User_Col_Name.email.value],
-        phone_num=rows[0][User_Col_Name.phone.value],
-        householdid=rows[0][User_Col_Name.householdid.value],
-    )
+    return create_UserResponse(row)
 
 
 def leave_household(
@@ -136,15 +131,9 @@ def leave_household(
     if old_householdid is not None:
         delete_household_if_empty(old_householdid, client)
 
-    return UserResponse(
-        userid=rows[0][User_Col_Name.userid.value],
-        username=rows[0][User_Col_Name.username.value],
-        fname=rows[0][User_Col_Name.fname.value],
-        lname=rows[0][User_Col_Name.lname.value],
-        email=rows[0][User_Col_Name.email.value],
-        phone_num=rows[0][User_Col_Name.phone.value],
-        householdid=rows[0][User_Col_Name.householdid.value],
-    )
+    row = rows[first]
+
+    return create_UserResponse(row)
 
 
 def delete_household_if_empty(
@@ -210,7 +199,7 @@ def create_household_db(
     if not rows:
         return None
 
-    first_row = rows[0]
+    first_row = rows[first]
     householdid = first_row[Household_Col_Name.householdid.value]
     member_count = get_household_member_count(householdid, client)
 

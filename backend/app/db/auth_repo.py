@@ -78,7 +78,8 @@ def authenticate_user(
     if not data:
         return False
 
-    user_row = data[0]
+    first = 0
+    user_row = data[first]
 
     if not verify_password(password, user_row[User_Col_Name.passhash.value].strip()):
         return False
@@ -111,4 +112,5 @@ def get_user_by_username(
     if not data:
         return None
 
-    return create_UserResponse(data[0])
+    first = 0
+    return create_UserResponse(data[first])

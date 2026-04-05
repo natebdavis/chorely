@@ -21,6 +21,7 @@ Module for chore-related database operations.
 Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
 """
 
+first = 0
 
 def get_chore(
     choreid: int,
@@ -47,7 +48,7 @@ def get_chore(
     if not data:
         return None
 
-    chore_row = data[0]
+    chore_row = data[first]
     assignee_id = chore_row[Chore_Col_Name.assignee.value]
     assignee = get_user(userid=assignee_id, client=client) if assignee_id else None
 
@@ -138,10 +139,10 @@ def add_chore(
     if not rows:
         return None
 
-    assignee_id = rows[0][Chore_Col_Name.assignee.value]
+    assignee_id = rows[first][Chore_Col_Name.assignee.value]
     assignee = get_user(userid=assignee_id, client=client) if assignee_id else None
 
-    return create_ChoreResponse(rows[0], assignee=assignee)
+    return create_ChoreResponse(rows[first], assignee=assignee)
 
 
 def remove_chore(
@@ -207,7 +208,7 @@ def update_chore(
         return None
 
     assignee = get_user(userid=assignee_id, client=client) if assignee_id else None
-    return create_ChoreResponse(rows[0], assignee=assignee)
+    return create_ChoreResponse(rows[first], assignee=assignee)
 
 
 def get_all_requested_chores(

@@ -18,6 +18,8 @@ Module for notification-related database operations.
 Contributors: Edmund Krajewski
 """
 
+first = 0
+
 
 def get_notifications(
     client: Union[Client, None] = None,
@@ -65,7 +67,7 @@ def get_notification(
     if not data:
         return None
 
-    return create_NotificationResponse(data[0])
+    return create_NotificationResponse(data[first])
 
 
 def add_notification(
@@ -92,7 +94,7 @@ def add_notification(
     if not rows:
         return None
 
-    return create_NotificationResponse(rows[0])
+    return create_NotificationResponse(rows[first])
 
 
 def remove_notification(

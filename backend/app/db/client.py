@@ -7,6 +7,8 @@ Module for creating and returning the Supabase client.
 Contributors: Edmund Krajewski, Gilligan Berlinski
 """
 
+client = None
+
 def get_client() -> Client:
     """
     Create a client to connect with the Supabase database.
@@ -17,6 +19,11 @@ def get_client() -> Client:
     Raises:
         ValueError: if required environment variables are missing.
     """
+
+    global client
+    if client is not None:
+        return client
+
     env = load_env_variables()
     supabase_url = env["SUPABASE_URL"]
     service_key = env["SERVICE_KEY"]

@@ -18,6 +18,7 @@ Module for user-related database operations.
 Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
 """
 
+first = 0
 
 def get_user(
     userid: Union[int, None] = None,
@@ -57,7 +58,7 @@ def get_user(
     if not data:
         return None
 
-    return create_UserResponse(data[0])
+    return create_UserResponse(data[first])
 
 
 def get_users(
@@ -117,7 +118,7 @@ def add_user(
     if not rows:
         return None
 
-    return create_UserResponse(rows[0])
+    return create_UserResponse(rows[first])
 
 
 def remove_user(
