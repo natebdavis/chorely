@@ -20,19 +20,10 @@ class HouseholdCreateRequest(BaseModel):
     householdid: int
 
 
-class HouseholdJoinRequest(BaseModel):
-    """
-    Request body schema for joining a Household.
-    """
+class HouseholdInviteRequest(BaseModel):
     userid: int
     
 
-
-class HouseholdLeaveRequest(BaseModel):
-    """
-    Request body schema for leaving a Household.
-    """
-    userid: int
 
 
 class HouseholdResponse(BaseModel):

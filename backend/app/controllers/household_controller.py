@@ -1,11 +1,14 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
+import datetime as DT
 
 from app.household import (
     HouseholdResponse,
-    HouseholdJoinRequest,
-    HouseholdLeaveRequest,
+    HouseholdInviteRequest,
 )
+from app.invite import InviteCreateRequest, InviteStatus
+from app.notification import NotificationCreateRequest, NotificationType
+from app.db.notification_repo import create_notification
 from app.database import (
     get_household_member_count,
     get_current_user,
@@ -15,25 +18,16 @@ from app.database import (
     get_users,
     leave_household,
     get_user,
+    create_invite,
+    get_pending_invite_for_household_user,
 )
-from app.user import UserResponse
-
-"""
-Module for managing Household Controller operations.
-Handles HTTP requests related to Households and exposes API endpoints
-for creating and retrieving household information.
-
-Contributors: Edmund Krajewski, Gilligan Berlinski
-"""
+from app.user import UserResponse, get_full_name
 
 router = APIRouter(tags=["households"], prefix="/households")
 
 
 @router.get("/members", response_model=List[UserResponse])
 def get_household_users(current_user: UserResponse = Depends(get_current_user)):
-    """
-    Retrieve all users belonging to the current user's household.
-    """
     householdid = current_user.householdid
 
     if householdid is None:
@@ -50,14 +44,11 @@ def get_household_users(current_user: UserResponse = Depends(get_current_user)):
             detail="No users in household found",
         )
 
-    return users
+    return list(users)
 
 
 @router.get("", response_model=HouseholdResponse)
 def get_household(current_user: UserResponse = Depends(get_current_user)):
-    """
-    Retrieve household information for the current user.
-    """
     householdid = current_user.householdid
 
     if householdid is None:
@@ -74,9 +65,6 @@ def get_household(current_user: UserResponse = Depends(get_current_user)):
 
 @router.post("", response_model=HouseholdResponse)
 def create_household(current_user: UserResponse = Depends(get_current_user)):
-    """
-    Create a new household and add the current user as a member.
-    """
     householdid = get_householdid(current_user.userid)
 
     if householdid is not None:
@@ -107,20 +95,22 @@ def create_household(current_user: UserResponse = Depends(get_current_user)):
     )
 
 
-@router.post("/join")
-def join_household_route(
-    request: HouseholdJoinRequest,
-    current_user: UserResponse = Depends(get_current_user),
+def _send_household_invite(
+    request: HouseholdInviteRequest,
+    current_user: UserResponse,
 ):
-    """
-    Allow a user to add another user to their household.
-    """
     current_householdid = get_householdid(userid=current_user.userid)
 
     if current_householdid is None:
         raise HTTPException(
             status_code=400,
-            detail="User must be a member of a household to add another user to it.",
+            detail="User must be in a household to invite others",
+        )
+
+    if current_user.userid == request.userid:
+        raise HTTPException(
+            status_code=400,
+            detail="User cannot invite themselves",
         )
 
     member_count = get_household_member_count(current_householdid)
@@ -140,41 +130,90 @@ def join_household_route(
     if user.householdid == current_householdid:
         raise HTTPException(
             status_code=400,
-            detail="User already belongs to this household",
+            detail="User already in this household",
         )
 
     if user.householdid is not None:
         raise HTTPException(
             status_code=400,
-            detail="User already belongs to a different household",
+            detail="User already belongs to another household",
         )
 
-    joined_user = join_household(request.userid, current_householdid)
+    existing_invite = get_pending_invite_for_household_user(
+        householdid=current_householdid,
+        invitee_userid=request.userid,
+    )
 
-    if not joined_user:
+    if existing_invite:
+        raise HTTPException(
+            status_code=409,
+            detail="A pending invite already exists for this user and household",
+        )
+
+    now = DT.datetime.now().isoformat()
+
+    invite_payload = InviteCreateRequest(
+        householdid=current_householdid,
+        inviter_userid=current_user.userid,
+        invitee_userid=request.userid,
+        status=InviteStatus.PENDING.value,
+        created_at=now,
+    )
+
+    created_invite = create_invite(invite_payload)
+
+    if not created_invite:
         raise HTTPException(
             status_code=500,
-            detail="Failed to add user to household",
+            detail="Failed to create invite",
         )
 
-    return {"message": "User joined household successfully"}
+    created_notification = create_notification(
+        NotificationCreateRequest(
+            userid=request.userid,
+            type=NotificationType.INVITE.value,
+            title="Household Invite",
+            message=f"{get_full_name(current_user)} invited you to join household {current_householdid}",
+            reference_id=created_invite.inviteid,
+            time=now,
+            is_read=False,
+        )
+    )
+
+    if not created_notification:
+        raise HTTPException(
+            status_code=500,
+            detail="Invite created but notification failed",
+        )
+
+    return {
+        "message": "Invite sent successfully",
+        "inviteid": created_invite.inviteid,
+    }
+
+
+@router.post("/invite")
+def invite_to_household(
+    request: HouseholdInviteRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    return _send_household_invite(request, current_user)
+
+
+@router.post("/join")
+def join_household_route(
+    request: HouseholdInviteRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    return _send_household_invite(request, current_user)
 
 
 @router.delete("/leave")
 def leave_household_route(
-    request: HouseholdLeaveRequest,
     current_user: UserResponse = Depends(get_current_user),
 ):
-    """
-    Allow a user to leave their current household.
-    """
-    if current_user.userid != request.userid:
-        raise HTTPException(
-            status_code=400,
-            detail="Unauthorized user attempting to remove another user from household.",
-        )
+    user = get_user(userid=current_user.userid)
 
-    user = get_user(userid=request.userid)
     if not user:
         raise HTTPException(
             status_code=404,
@@ -187,7 +226,7 @@ def leave_household_route(
             detail="User is not part of a household",
         )
 
-    left_user = leave_household(request.userid)
+    left_user = leave_household(current_user.userid)
 
     if not left_user:
         raise HTTPException(
