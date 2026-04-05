@@ -9,14 +9,19 @@ from app.database import (
     get_chore as db_get_chore,
     remove_chore as db_remove_chore,
     update_chore as db_update_chore,
+    edit_chore as db_edit_chore
 )
 from app.user import UserResponse
 from app.chore import (
     ChoreCreateInput,
     ChoreCreateRequest,
     ChoreDeleteRequest,
+    ChoreEditRequest,
     ChoreResponse,
     ChoreUpdateRequest,
+    Priority,
+    Location,
+    Type
 )
 
 """
@@ -29,7 +34,71 @@ Contributers: Edmund Krajewski, Gilligan Berlinski
 
 router = APIRouter(prefix="/chores", tags=["chores"])
 
+@router.patch("/edit/{choreid}", response_model=ChoreResponse)
+def edit_chore_route(
+    choreid: int,
+    payload: ChoreEditRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Edit an existing chore's details (name, description, due date, priority, type, location).
+    """
+    try:
+        chore = db_get_chore(choreid)
 
+        if not chore:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chore not found",
+            )
+
+        if chore.householdid != current_user.householdid:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chore not found in user's household",
+            )
+        
+        if current_user.userid != chore.requester_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the requester can edit this chore",
+            )
+        
+        # Validate priority, type, and location if they are provided
+        if payload.priority is not None and payload.priority not in Priority.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid priority value",
+            )
+        if payload.ctype is not None and payload.ctype not in Type.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid type value",
+            )
+        if payload.location is not None and payload.location not in Location.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid location value",
+            )
+
+        updated = db_edit_chore(chore=payload, choreid=choreid)
+
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update chore",
+            )
+
+        return updated
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to edit chore: {str(e)}",
+        )
+    
 @router.patch("/{choreid}", response_model=ChoreResponse)
 def update_chore_route(
     choreid: int,
@@ -46,6 +115,23 @@ def update_chore_route(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid status value",
+            )
+        
+        # Validate priority, type, and location if they are provided
+        if payload.priority is not None and payload.priority not in Priority.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid priority value",
+            )
+        if payload.ctype is not None and payload.ctype not in Type.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid type value",
+            )
+        if payload.location is not None and payload.location not in Location.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid location value",
             )
 
         assignee = None
@@ -80,6 +166,9 @@ def update_chore_route(
             choreid=choreid,
             status=payload.status,
             assignee_id=payload.assignee_id,
+            priority=payload.priority,
+            ctype=payload.ctype,
+            location=payload.location
         )
 
         if not updated:
@@ -192,7 +281,24 @@ def create_chore(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Assignee must be in the same household as the requester",
                 )
-
+            
+        # Validate priority, type, and location if they are provided
+        if payload.priority is not None and payload.priority not in Priority.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid priority value",
+            )
+        if payload.ctype is not None and payload.ctype not in Type.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid type value",
+            )
+        if payload.location is not None and payload.location not in Location.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid location value",
+            )
+        
         try:
             due_date = DT.datetime.fromisoformat(payload.due_date)
             current_time = DT.datetime.now()
@@ -217,6 +323,9 @@ def create_chore(
             requester_id=current_user.userid,
             assignee_id=payload.assignee_id,
             status="IN_PROGRESS" if payload.assignee_id is not None else "UNASSIGNED",
+            priority=payload.priority,
+            ctype=payload.ctype,
+            location=payload.location
         )
 
         created = db_add_chore(final_payload)

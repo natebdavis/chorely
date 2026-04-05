@@ -34,6 +34,7 @@ from app.db.chore_repo import (
     get_chores,
     remove_chore,
     update_chore,
+    edit_chore
 )
 
 from app.db.household_repo import (
@@ -78,6 +79,7 @@ __all__ = [
     "get_chores",
     "remove_chore",
     "update_chore",
+    "edit_chore",
 
     # households
     "create_household_db",

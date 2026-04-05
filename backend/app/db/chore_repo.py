@@ -10,6 +10,8 @@ from app.chore import (
     ChoreResponse,
     Status,
     create_ChoreResponse,
+    ChoreEditRequest,
+    create_ChoreEditRequest
 )
 from app.db.client import get_client
 from app.user import UserResponse, search_user
@@ -131,6 +133,9 @@ def add_chore(
         Chore_Col_Name.requester.value: chore.requester_id,
         Chore_Col_Name.assignee.value: chore.assignee_id,
         Chore_Col_Name.status.value: chore.status,
+        Chore_Col_Name.priority.value: chore.priority,
+        Chore_Col_Name.ctype.value: chore.ctype,
+        Chore_Col_Name.location.value: chore.location,
     }
 
     response = client.table(CHORE_TABLE_NAME).insert(data).execute()
@@ -170,12 +175,48 @@ def remove_chore(
 
     return bool(response.data)
 
+def edit_chore(
+    chore: ChoreEditRequest, choreid: int,
+    client: Union[Client, None] = None,
+) -> Union[ChoreResponse, None]:
+    """
+    Edit an existing chore in the database.
+    """
+    if client is None:
+        client = get_client()
+
+    data = {
+        Chore_Col_Name.cname.value: chore.name,
+        Chore_Col_Name.description.value: chore.description,
+        Chore_Col_Name.due_date.value: chore.due_date,
+        Chore_Col_Name.priority.value: chore.priority,
+        Chore_Col_Name.location.value: chore.location,
+        Chore_Col_Name.ctype.value: chore.ctype,
+    }
+
+    response = (
+        client
+        .table(CHORE_TABLE_NAME)
+        .update(data)
+        .eq(Chore_Col_Name.choreid.value, choreid)
+        .execute()
+    )
+
+    rows = response.data
+    if not rows:
+        return None
+
+    return create_ChoreResponse(rows[first])
+
 
 def update_chore(
     householdid: int,
     choreid: int,
     status: Union[str, None] = None,
     assignee_id: Union[int, None] = None,
+    priority: Union[str, None] = None,
+    location: Union[str, None] = None,
+    ctype: Union[str, None] = None,
     client: Union[Client, None] = None,
 ) -> Union[ChoreResponse, None]:
     """
@@ -191,6 +232,12 @@ def update_chore(
 
     if status is not None:
         data[Chore_Col_Name.status.value] = status
+    if priority is not None:
+        data[Chore_Col_Name.priority.value] = priority
+    if location is not None:
+        data[Chore_Col_Name.location.value] = location
+    if ctype is not None:
+        data[Chore_Col_Name.ctype.value] = ctype
 
     data[Chore_Col_Name.assignee.value] = assignee_id
 
