@@ -6,6 +6,7 @@ import { useAuth } from "../../components/AuthContext";
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const username = user?.username ?? "User";
+  const userId = user?.userid ?? "N/A";
 
   return (
     <View style={styles.container}>
@@ -19,6 +20,7 @@ export default function ProfileScreen() {
       </View>
 
       <Text style={styles.username}>{username}</Text>
+      <Text style={styles.username}>ID: {userId}</Text>
 
       <TouchableOpacity
         style={styles.settingsButton}
