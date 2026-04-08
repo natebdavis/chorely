@@ -25,6 +25,7 @@ Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
 
 first = 0
 
+
 def get_chore(
     choreid: int,
     client: Union[Client, None] = None,
@@ -60,13 +61,12 @@ def get_chore(
 def get_chores(
     householdid: int,
     client: Union[Client, None] = None,
-) -> Union[Iterable[ChoreResponse], None]:
+) -> Iterable[ChoreResponse]:
     """
     Get all chores in a household.
 
     Output:
-        An iterable of ChoreResponse objects in the specified household,
-        or None if no chores are found.
+        An iterable of ChoreResponse objects in the specified household.
 
     Raises:
         ValueError if a chore is assigned to a user not in that household.
@@ -82,12 +82,11 @@ def get_chores(
         .execute()
     )
 
-    chore_data = response.data
+    chore_data = response.data or []
     if not chore_data:
-        return None
+        return []
 
-    users = get_users(householdid=householdid, client=client)
-    users = list(users) if users else []
+    users = list(get_users(householdid=householdid, client=client))
 
     chores = []
 
@@ -214,6 +213,8 @@ def update_chore(
     choreid: int,
     status: Union[str, None] = None,
     assignee_id: Union[int, None] = None,
+    status_provided: bool = False,
+    assignee_provided: bool = False,
     priority: Union[str, None] = None,
     location: Union[str, None] = None,
     ctype: Union[str, None] = None,
@@ -230,7 +231,7 @@ def update_chore(
 
     data = {}
 
-    if status is not None:
+    if status_provided:
         data[Chore_Col_Name.status.value] = status
     if priority is not None:
         data[Chore_Col_Name.priority.value] = priority
@@ -239,7 +240,11 @@ def update_chore(
     if ctype is not None:
         data[Chore_Col_Name.ctype.value] = ctype
 
-    data[Chore_Col_Name.assignee.value] = assignee_id
+    if assignee_provided:
+        data[Chore_Col_Name.assignee.value] = assignee_id
+
+    if not data:
+        return get_chore(choreid=choreid, client=client)
 
     response = (
         client
@@ -254,14 +259,21 @@ def update_chore(
     if not rows:
         return None
 
-    assignee = get_user(userid=assignee_id, client=client) if assignee_id else None
-    return create_ChoreResponse(rows[first], assignee=assignee)
+    updated_row = rows[first]
+    updated_assignee_id = updated_row[Chore_Col_Name.assignee.value]
+    assignee = (
+        get_user(userid=updated_assignee_id, client=client)
+        if updated_assignee_id is not None
+        else None
+    )
+
+    return create_ChoreResponse(updated_row, assignee=assignee)
 
 
 def get_all_requested_chores(
     userid: int,
     client: Union[Client, None] = None,
-) -> Union[Iterable[ChoreResponse], None]:
+) -> Iterable[ChoreResponse]:
     """
     Given a userid, return all chores requested by that user.
     """
@@ -276,11 +288,9 @@ def get_all_requested_chores(
         .execute()
     )
 
-    data = response.data
-    if not data:
-        return None
-
+    data = response.data or []
     chores = []
+
     for row in data:
         assignee_id = row[Chore_Col_Name.assignee.value]
         assignee = get_user(userid=assignee_id, client=client) if assignee_id else None
@@ -292,7 +302,7 @@ def get_all_requested_chores(
 def get_all_in_progress_assigned_chores(
     userid: int,
     client: Union[Client, None] = None,
-) -> Union[Iterable[ChoreResponse], None]:
+) -> Iterable[ChoreResponse]:
     """
     Given a userid, return all chores assigned to the user and in progress.
     """
@@ -308,10 +318,7 @@ def get_all_in_progress_assigned_chores(
         .execute()
     )
 
-    data = response.data
-    if not data:
-        return None
-
+    data = response.data or []
     assignee = get_user(userid=userid, client=client)
     return [create_ChoreResponse(row, assignee=assignee) for row in data]
 
@@ -319,7 +326,7 @@ def get_all_in_progress_assigned_chores(
 def get_all_completed_chores(
     userid: int,
     client: Union[Client, None] = None,
-) -> Union[Iterable[ChoreResponse], None]:
+) -> Iterable[ChoreResponse]:
     """
     Given a userid, return all chores assigned to the user and completed.
     """
@@ -335,9 +342,6 @@ def get_all_completed_chores(
         .execute()
     )
 
-    data = response.data
-    if not data:
-        return None
-
+    data = response.data or []
     assignee = get_user(userid=userid, client=client)
     return [create_ChoreResponse(row, assignee=assignee) for row in data]

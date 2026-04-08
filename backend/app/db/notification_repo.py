@@ -1,65 +1,39 @@
-from collections.abc import Iterable
-from typing import Union
-
+from typing import Optional, List
 from supabase import Client
 
 from app.db.client import get_client
 from app.notification import (
-    NOTIFICATION_TABLE_NAME,
-    Notification_Col_Name,
-    NotificationCreateRequest,
+    Notification,
     NotificationResponse,
+    NotificationCreateRequest,
     create_NotificationResponse,
 )
 
-"""
-Module for notification-related database operations.
 
-Contributors: Edmund Krajewski
-"""
-
-first = 0
-
-
-def get_notifications(
-    client: Union[Client, None] = None,
-) -> Union[Iterable[NotificationResponse], None]:
-    """
-    Get all notifications.
-
-    Output:
-        An iterable of NotificationResponse objects, or None if none exist.
-    """
-    if client is None:
-        client = get_client()
-
-    response = client.table(NOTIFICATION_TABLE_NAME).select("*").execute()
-    data = response.data
-
-    if not data:
-        return None
-
-    return [create_NotificationResponse(row) for row in data]
-
-
-def get_notification(
-    notificationid: int,
-    client: Union[Client, None] = None,
-) -> Union[NotificationResponse, None]:
-    """
-    Get a single notification by notificationid.
-
-    Output:
-        A NotificationResponse matching the notificationid, or None if not found.
-    """
+def get_notifications(userid: int, client: Optional[Client] = None) -> List[NotificationResponse]:
     if client is None:
         client = get_client()
 
     response = (
-        client
-        .table(NOTIFICATION_TABLE_NAME)
+        client.table("notifications")
         .select("*")
-        .eq(Notification_Col_Name.notificationid.value, notificationid)
+        .eq("userid", userid)
+        .order("time", desc=True)
+        .execute()
+    )
+
+    data = response.data or []
+    return [create_NotificationResponse(row) for row in data]
+
+
+def get_notification(notificationid: int, client: Optional[Client] = None) -> Optional[NotificationResponse]:
+    if client is None:
+        client = get_client()
+
+    response = (
+        client.table("notifications")
+        .select("*")
+        .eq("notid", notificationid)
         .execute()
     )
 
@@ -67,54 +41,64 @@ def get_notification(
     if not data:
         return None
 
-    return create_NotificationResponse(data[first])
+    return create_NotificationResponse(data[0])
 
 
-def add_notification(
-    notification: NotificationCreateRequest,
-    client: Union[Client, None] = None,
-) -> Union[NotificationResponse, None]:
-    """
-    Add a notification to the database.
-
-    Output:
-        Inserted notification returned as NotificationResponse, or None if insert failed.
-    """
+def add_notification(notification: Notification, client: Optional[Client] = None) -> Optional[NotificationResponse]:
     if client is None:
         client = get_client()
 
-    data = {
-        Notification_Col_Name.choreid.value: notification.choreid,
-        Notification_Col_Name.time.value: notification.time,
-    }
+    response = client.table("notifications").insert(notification.to_dict()).execute()
 
-    response = client.table(NOTIFICATION_TABLE_NAME).insert(data).execute()
-    rows = response.data
-
-    if not rows:
+    if not response.data:
         return None
 
-    return create_NotificationResponse(rows[first])
+    return create_NotificationResponse(response.data[0])
 
 
-def remove_notification(
-    notificationid: int,
-    client: Union[Client, None] = None,
-) -> bool:
-    """
-    Remove a notification from the database.
+def create_notification(notification: NotificationCreateRequest, client: Optional[Client] = None) -> Optional[NotificationResponse]:
+    if client is None:
+        client = get_client()
 
-    Output:
-        True if the notification was deleted, False otherwise.
-    """
+    notification_obj = Notification(
+        userid=notification.userid,
+        type=notification.type,
+        title=notification.title,
+        message=notification.message,
+        reference_id=notification.reference_id,
+        time=notification.time,
+        is_read=notification.is_read,
+    )
+
+    return add_notification(notification_obj, client)
+
+
+def mark_notification_read(notificationid: int, client: Optional[Client] = None) -> Optional[NotificationResponse]:
     if client is None:
         client = get_client()
 
     response = (
-        client
-        .table(NOTIFICATION_TABLE_NAME)
+        client.table("notifications")
+        .update({"is_read": True})
+        .eq("notid", notificationid)
+        .execute()
+    )
+
+    data = response.data
+    if not data:
+        return None
+
+    return create_NotificationResponse(data[0])
+
+
+def remove_notification(notificationid: int, client: Optional[Client] = None) -> bool:
+    if client is None:
+        client = get_client()
+
+    response = (
+        client.table("notifications")
         .delete()
-        .eq(Notification_Col_Name.notificationid.value, notificationid)
+        .eq("notid", notificationid)
         .execute()
     )
 
