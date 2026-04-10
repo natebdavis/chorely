@@ -25,6 +25,30 @@ Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
 
 first = 0
 
+def get_requesterid(choreid: int, client: Union[Client, None] = None) -> Union[int, None]:
+    """
+    Get a requester id given a choreid.
+
+    Output:
+        An int matching the requesterid, or None if chore does not exist.
+    """
+
+    if client is None:
+        client = get_client()
+
+    response = (client
+                .table(CHORE_TABLE_NAME)
+                .select(Chore_Col_Name.requester)
+                .eq(Chore_Col_Name.choreid.value, choreid)
+                .execute()
+    )
+
+    data = response.data
+    if not data:
+        return None
+    
+    return response[first]
+
 
 def get_chore(
     choreid: int,
