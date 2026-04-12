@@ -11,6 +11,7 @@ from app.user import (
     UserResponse,
     create_UserResponse,
 )
+from app.chore import CHORE_TABLE_NAME, Chore_Col_Name
 
 """
 Module for user-related database operations.
@@ -232,3 +233,29 @@ def is_phone_num_available(
     )
 
     return not response.data
+
+def get_requester(choreid: int, client: Union[Client, None] = None) -> Union[UserResponse, None]:
+    """
+    Get a requester given a choreid.
+
+    Output:
+        A UserResponse matching the requester, or None if chore does not exist.
+    """
+
+    if client is None:
+        client = get_client()
+
+    response = (client
+                .table(CHORE_TABLE_NAME)
+                .select(Chore_Col_Name.requester)
+                .eq(Chore_Col_Name.choreid.value, choreid)
+                .execute()
+    )
+
+    data = response.data
+    if not data:
+        return None
+    
+    requester_id = data[first][Chore_Col_Name.requester.value]
+    
+    return get_user(userid=requester_id, client=client)

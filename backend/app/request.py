@@ -32,7 +32,9 @@ class RequestCreateRequest(BaseModel):
 class RequestResponse(BaseModel):
     requestid: int
     requester_userid: int
+    requester_name: str
     requested_assignee_userid: int
+    requested_assignee_name: str
     requested_choreid: int
     request_status: RequestStatus
     created_at: str
@@ -43,11 +45,13 @@ class RequestUpdateRequest(BaseModel):
     responded_at: str
 
 
-def create_RequestResponse(data: dict, requesterid: int) -> RequestResponse:
+def create_RequestResponse(data: dict, requesterid: int, requester_name: str, requested_assignee_name: str) -> RequestResponse:
     return RequestResponse(
         requestid=data[Request_Col_Name.requestid.value],
         requester_userid=requesterid,
+        requester_name=requester_name,
         requested_assignee_userid=data[Request_Col_Name.requestedassigneeid.value],
+        requested_assignee_name=requested_assignee_name,
         requested_choreid=data[Request_Col_Name.requestedassigneeid.value],
         request_status=data[Request_Col_Name.requeststatus.value],
         created_at=data[Request_Col_Name.createdat.value],
