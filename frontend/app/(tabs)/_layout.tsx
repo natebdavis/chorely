@@ -51,14 +51,18 @@ export default function HomeLayout() {
         />
 
         <Tabs.Screen
-          name="profile"
+          name="notifications"
           options={{
             tabBarIcon: ({ color }) => (
-              <Ionicons name="settings-outline" size={28} color={color} />
+              <Ionicons name="notifications-outline" size={28} color={color} />
             ),
           }}
         />
+
+
       </Tabs>
+
+      
 
       {/* Floating Add Button */}
       <TouchableOpacity
