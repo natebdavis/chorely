@@ -1,13 +1,3 @@
-"""
-Compatibility layer for database-related imports.
-
-This module re-exports repository functions from app.db so that
-existing imports like `from app.database import ...` continue to work
-while the codebase is being refactored.
-
-Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
-"""
-
 from app.db.client import get_client
 
 from app.db.auth_repo import (
@@ -34,6 +24,7 @@ from app.db.chore_repo import (
     get_chores,
     remove_chore,
     update_chore,
+    edit_chore
 )
 
 from app.db.household_repo import (
@@ -48,19 +39,28 @@ from app.db.household_repo import (
 
 from app.db.notification_repo import (
     add_notification,
+    create_notification,
     get_notification,
     get_notifications,
+    mark_notification_read,
     remove_notification,
+)
+
+from app.db.invite_repo import (
+    cancel_pending_invites_for_user,
+    create_invite,
+    get_invite,
+    get_outgoing_pending_invites,
+    get_user_invites,
+    get_user_pending_invites,
+    get_pending_invite_for_household_user,
+    update_invite_status,
 )
 
 __all__ = [
     "get_client",
-
-    # auth
     "authenticate_user",
     "get_current_user",
-
-    # users
     "add_user",
     "get_user",
     "get_users",
@@ -68,8 +68,6 @@ __all__ = [
     "is_phone_num_available",
     "is_username_available",
     "remove_user",
-
-    # chores
     "add_chore",
     "get_all_completed_chores",
     "get_all_in_progress_assigned_chores",
@@ -78,6 +76,7 @@ __all__ = [
     "get_chores",
     "remove_chore",
     "update_chore",
+    "edit_chore",
 
     # households
     "create_household_db",
@@ -87,10 +86,18 @@ __all__ = [
     "household_exists",
     "join_household",
     "leave_household",
-
-    # notifications
     "add_notification",
+    "create_notification",
     "get_notification",
     "get_notifications",
+    "mark_notification_read",
     "remove_notification",
+    "cancel_pending_invites_for_user",
+    "create_invite",
+    "get_invite",
+    "get_outgoing_pending_invites",
+    "get_user_invites",
+    "get_user_pending_invites",
+    "get_pending_invite_for_household_user",
+    "update_invite_status",
 ]

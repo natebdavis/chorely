@@ -22,6 +22,22 @@ Contributors: Edmund Krajewski, Gilligan Berlinski
 router = APIRouter(tags=["users"], prefix="/user")
 
 
+@router.get("/by-username/{username}", response_model=UserResponse)
+def get_user_by_username_route(username: str):
+    """
+    Retrieve a single user by username.
+    """
+    user = get_user(username=username)
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    return user
+
+
 @router.get("/{userid}", response_model=UserResponse)
 def get_single_user(userid: int):
     """

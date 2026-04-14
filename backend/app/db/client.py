@@ -9,9 +9,10 @@ Contributors: Edmund Krajewski, Gilligan Berlinski
 
 client = None
 
+
 def get_client() -> Client:
     """
-    Create a client to connect with the Supabase database.
+    Create and cache a client to connect with the Supabase database.
 
     Output:
         A Supabase Client object that can be used to interact with the database.
@@ -19,8 +20,8 @@ def get_client() -> Client:
     Raises:
         ValueError: if required environment variables are missing.
     """
-
     global client
+
     if client is not None:
         return client
 
@@ -34,4 +35,5 @@ def get_client() -> Client:
     if service_key is None:
         raise ValueError("SERVICE_KEY not found in .env")
 
-    return create_client(supabase_url, service_key)
+    client = create_client(supabase_url, service_key)
+    return client

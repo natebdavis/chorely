@@ -3,21 +3,29 @@ import datetime as DT
 
 from app.database import (
     add_chore as db_add_chore,
+    add_notification as db_add_notification,
     get_chores as db_get_chores,
     get_current_user,
     get_user as db_get_user,
     get_chore as db_get_chore,
     remove_chore as db_remove_chore,
     update_chore as db_update_chore,
+    edit_chore as db_edit_chore
 )
-from app.user import UserResponse
+from app.user import UserResponse, get_full_name
 from app.chore import (
     ChoreCreateInput,
     ChoreCreateRequest,
     ChoreDeleteRequest,
+    ChoreEditRequest,
     ChoreResponse,
     ChoreUpdateRequest,
+    Priority,
+    Location,
+    Type,
+    Status,
 )
+from app.notification import NotificationCreateRequest, NotificationType
 
 """
 Module for managing Chore Controller operations.
@@ -29,7 +37,71 @@ Contributers: Edmund Krajewski, Gilligan Berlinski
 
 router = APIRouter(prefix="/chores", tags=["chores"])
 
+@router.patch("/edit/{choreid}", response_model=ChoreResponse)
+def edit_chore_route(
+    choreid: int,
+    payload: ChoreEditRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Edit an existing chore's details (name, description, due date, priority, type, location).
+    """
+    try:
+        chore = db_get_chore(choreid)
 
+        if not chore:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chore not found",
+            )
+
+        if chore.householdid != current_user.householdid:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chore not found in user's household",
+            )
+        
+        if current_user.userid != chore.requester_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the requester can edit this chore",
+            )
+        
+        # Validate priority, type, and location if they are provided
+        if payload.priority is not None and payload.priority not in Priority.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid priority value",
+            )
+        if payload.ctype is not None and payload.ctype not in Type.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid type value",
+            )
+        if payload.location is not None and payload.location not in Location.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid location value",
+            )
+
+        updated = db_edit_chore(chore=payload, choreid=choreid)
+
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update chore",
+            )
+
+        return updated
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to edit chore: {str(e)}",
+        )
+    
 @router.patch("/{choreid}", response_model=ChoreResponse)
 def update_chore_route(
     choreid: int,
@@ -37,19 +109,65 @@ def update_chore_route(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """
-    Update a chore's status and/or assignee.
+    Update a chore's status and/or assignee using PATCH semantics.
     """
     try:
-        valid_statuses = {"UNASSIGNED", "IN_PROGRESS", "COMPLETE"}
+        existing = db_get_chore(choreid)
 
-        if payload.status is not None and payload.status not in valid_statuses:
+        if not existing:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid status value",
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chore not found",
             )
 
-        assignee = None
-        if payload.assignee_id is not None:
+        if existing.householdid != current_user.householdid:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chore not found in user's household",
+            )
+
+        fields_set = getattr(payload, "model_fields_set", set())
+        status_provided = "status" in fields_set
+        assignee_provided = "assignee_id" in fields_set
+
+        if not status_provided and not assignee_provided:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No chore fields provided for update",
+            )
+
+        final_status = existing.status
+        if status_provided and payload.status is not None:
+            final_status = payload.status.upper()
+        
+        # Validate priority, type, and location if they are provided
+        if payload.priority is not None and payload.priority not in Priority.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid priority value",
+            )
+        if payload.ctype is not None and payload.ctype not in Type.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid type value",
+            )
+        if payload.location is not None and payload.location not in Location.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid location value",
+            )
+
+        final_assignee = existing.assignee_id
+        if assignee_provided:
+            final_assignee = payload.assignee_id
+
+        if assignee_provided and not status_provided:
+            if payload.assignee_id is None:
+                final_status = Status.UNASSIGNED.name
+            elif existing.assignee_id is None and existing.status == Status.UNASSIGNED.name:
+                final_status = Status.IN_PROGRESS.name
+
+        if assignee_provided and payload.assignee_id is not None:
             assignee = db_get_user(userid=payload.assignee_id)
             if not assignee:
                 raise HTTPException(
@@ -63,23 +181,38 @@ def update_chore_route(
                     detail="Assignee must be in the same household",
                 )
 
-        if payload.assignee_id is None and payload.status == "IN_PROGRESS":
+        valid_statuses = {s.name for s in Status}
+
+        if final_status not in valid_statuses:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Status cannot be set to IN_PROGRESS without an assignee",
+                detail="Invalid status value",
             )
 
-        if payload.assignee_id is not None and payload.status == "UNASSIGNED":
+        if final_status == Status.IN_PROGRESS.name and final_assignee is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Status cannot be set to UNASSIGNED with an assignee",
+                detail="Status cannot be IN_PROGRESS without an assignee",
             )
+
+        if final_status == Status.UNASSIGNED.name and final_assignee is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Status cannot be UNASSIGNED with an assignee",
+            )
+
+        resolved_status_provided = status_provided or (final_status != existing.status)
 
         updated = db_update_chore(
             householdid=current_user.householdid,
             choreid=choreid,
-            status=payload.status,
-            assignee_id=payload.assignee_id,
+            status=final_status if resolved_status_provided else None,
+            assignee_id=payload.assignee_id if assignee_provided else None,
+            status_provided=resolved_status_provided,
+            assignee_provided=assignee_provided,
+            priority=payload.priority,
+            ctype=payload.ctype,
+            location=payload.location
         )
 
         if not updated:
@@ -87,6 +220,36 @@ def update_chore_route(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Chore not found",
             )
+
+        now = DT.datetime.now().isoformat()
+
+        if updated.assignee_id != existing.assignee_id and updated.assignee_id is not None:
+            if updated.assignee_id != current_user.userid:
+                db_add_notification(
+                    NotificationCreateRequest(
+                        userid=updated.assignee_id,
+                        type=NotificationType.CHORE_ASSIGNED.value,
+                        title="Chore Assigned",
+                        message=f"{get_full_name(current_user)} assigned you the chore '{updated.name}'",
+                        reference_id=updated.choreid,
+                        time=now,
+                        is_read=False,
+                    )
+                )
+
+        if existing.status != Status.COMPLETE.name and updated.status == Status.COMPLETE.name:
+            if updated.requester_id is not None and updated.requester_id != current_user.userid:
+                db_add_notification(
+                    NotificationCreateRequest(
+                        userid=updated.requester_id,
+                        type=NotificationType.CHORE_COMPLETED.value,
+                        title="Chore Completed",
+                        message=f"{get_full_name(current_user)} completed the chore '{updated.name}'",
+                        reference_id=updated.choreid,
+                        time=now,
+                        is_read=False,
+                    )
+                )
 
         return updated
 
@@ -143,15 +306,13 @@ def get_household_chores(
     try:
         householdid = current_user.householdid
 
-        if not householdid:
+        if householdid is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User has not joined a household",
             )
 
-        chores = db_get_chores(householdid)
-
-        return chores or []
+        return list(db_get_chores(householdid))
 
     except HTTPException:
         raise
@@ -173,7 +334,7 @@ def create_chore(
     try:
         householdid = current_user.householdid
 
-        if not householdid:
+        if householdid is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User must belong to a household to create chores",
@@ -192,7 +353,24 @@ def create_chore(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Assignee must be in the same household as the requester",
                 )
-
+            
+        # Validate priority, type, and location if they are provided
+        if payload.priority is not None and payload.priority not in Priority.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid priority value",
+            )
+        if payload.ctype is not None and payload.ctype not in Type.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid type value",
+            )
+        if payload.location is not None and payload.location not in Location.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid location value",
+            )
+        
         try:
             due_date = DT.datetime.fromisoformat(payload.due_date)
             current_time = DT.datetime.now()
@@ -216,7 +394,10 @@ def create_chore(
             due_date=payload.due_date,
             requester_id=current_user.userid,
             assignee_id=payload.assignee_id,
-            status="IN_PROGRESS" if payload.assignee_id is not None else "UNASSIGNED",
+            status=Status.IN_PROGRESS.name if payload.assignee_id is not None else Status.UNASSIGNED.name,
+            priority=payload.priority,
+            ctype=payload.ctype,
+            location=payload.location
         )
 
         created = db_add_chore(final_payload)
@@ -225,6 +406,19 @@ def create_chore(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create chore",
+            )
+
+        if created.assignee_id is not None and created.assignee_id != current_user.userid:
+            db_add_notification(
+                NotificationCreateRequest(
+                    userid=created.assignee_id,
+                    type=NotificationType.CHORE_ASSIGNED.value,
+                    title="Chore Assigned",
+                    message=f"{get_full_name(current_user)} assigned you the chore '{created.name}'",
+                    reference_id=created.choreid,
+                    time=DT.datetime.now().isoformat(),
+                    is_read=False,
+                )
             )
 
         return created
