@@ -52,7 +52,7 @@ def create_RequestResponse(data: dict, requesterid: int, requester_name: str, re
         requester_name=requester_name,
         requested_assignee_userid=data[Request_Col_Name.requestedassigneeid.value],
         requested_assignee_name=requested_assignee_name,
-        requested_choreid=data[Request_Col_Name.requestedassigneeid.value],
+        requested_choreid=data[Request_Col_Name.chorerequestid.value],
         request_status=data[Request_Col_Name.requeststatus.value],
         created_at=data[Request_Col_Name.createdat.value],
         responded_at=data[Request_Col_Name.respondedat.value]

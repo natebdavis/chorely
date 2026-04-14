@@ -247,7 +247,7 @@ def get_requester(choreid: int, client: Union[Client, None] = None) -> Union[Use
 
     response = (client
                 .table(CHORE_TABLE_NAME)
-                .select(Chore_Col_Name.requester)
+                .select(Chore_Col_Name.requester.value)
                 .eq(Chore_Col_Name.choreid.value, choreid)
                 .execute()
     )

@@ -44,9 +44,9 @@ def create_request(request: RequestCreateRequest,
         raise ValueError(f"Requested assignee user id: {request.requested_assignee_userid} does not exist.")
 
     data = {
-        Request_Col_Name.chorerequestid: request.requested_choreid,
-        Request_Col_Name.requestedassigneeid: request.requested_assignee_userid,
-        Request_Col_Name.chorerequestid: request.requested_choreid
+        Request_Col_Name.chorerequestid.value: request.requested_choreid,
+        Request_Col_Name.requestedassigneeid.value: request.requested_assignee_userid,
+        Request_Col_Name.chorerequestid.value: request.requested_choreid
     }
 
     response = client.table(REQUEST_TABLE_NAME).insert(data).execute()
@@ -75,7 +75,7 @@ def get_request(request_id: int, client: Union[Client, None] = None) -> Union[Re
         return None
     
 
-    requester = get_requester(data[first][Request_Col_Name.chorerequestid], client=client)
+    requester = get_requester(data[first][Request_Col_Name.chorerequestid.value], client=client)
     requested_assignee = get_user(userid=data[first][Request_Col_Name.requestedassigneeid.value], client=client)
 
     return create_RequestResponse(data=data[first], requesterid=requester.userid, requester_name=requester.username, requested_assignee_name=requested_assignee.username)
@@ -123,7 +123,8 @@ def get_outgoing_pending_requests(requester_id: int,
     .table(REQUEST_TABLE_NAME)
     .select(f"""
         *,
-        {Request_Col_Name.requestedassigneeid.value} (
+        {Request_Col_Name.requestedassigneeid.value},
+         {USER_TABLE_NAME} (
             {User_Col_Name.userid.value},
             {User_Col_Name.username.value}
         )
@@ -138,8 +139,9 @@ def get_outgoing_pending_requests(requester_id: int,
 
     requester = get_user(userid=requester_id, client=client)
 
+
     return [create_RequestResponse(data=row, requesterid=requester_id, requester_name=requester.username, 
-                                   requested_assignee_name=row[Request_Col_Name.requestedassigneeid.value][User_Col_Name.username.value]) for row in response.data]
+                                   requested_assignee_name=row.get(Request_Col_Name.requestedassigneeid.value).get(User_Col_Name.username.value)) for row in response.data]
 
 
 def get_user_requests(requestee_id: int, 

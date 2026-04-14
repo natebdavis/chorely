@@ -42,7 +42,7 @@ def create_chore_request(request: RequestCreateRequest, current_user: UserRespon
         HTTPException 404: If the requested assignee or chore is not found.
     """
 
-    requested_assignee = get_user(userid=request.requestedassigneeid)
+    requested_assignee = get_user(userid=request.requested_assignee_userid)
     if not requested_assignee:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
