@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   memberCard: {
-    backgroundColor: "#0c85e7a6",
+    backgroundColor: "#ffffff",
     padding: 16,
     borderRadius: 8,
     marginBottom: 12,
@@ -372,12 +372,12 @@ const styles = StyleSheet.create({
     borderColor: "#333",
   },
   memberName: {
-    color: "white",
+    color: "#000000",
     fontSize: 18,
     fontWeight: "600",
   },
   memberDetails: {
-    color: "#aaa",
+    color: "#000000",
     fontSize: 14,
     marginTop: 4,
   },
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     top:"4.5%",
     //bottom: "20%",
     right: -10,
-    backgroundColor: "#2b75d5",
+    backgroundColor: "#000000",
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 8,
