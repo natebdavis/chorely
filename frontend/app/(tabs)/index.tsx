@@ -162,20 +162,26 @@ export default function ChoreBoard() {
       style={styles.background}
       resizeMode="cover"
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.avatarButton}>
-            <Image
-              source={require("../../assets/images/default_profile.png")}
-              style={styles.avatar}
-            />
-          </TouchableOpacity>
 
-            <Text style={styles.title}>Chore Board</Text>
-            <View style = {styles.headerSpacer} />
+       <View style={styles.headerContainer}>
+          <View style={styles.greetingContainer}>
+
+            <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.avatarButton}>
+              <Image
+                source={require("../../assets/images/default_profile.png")}
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
+
+             <Text style={styles.greetingText}>Hi, {username}</Text>
+              
+              <View style = {styles.headerSpacer} />
+          </View>
+           <Text style={styles.title}>Chore Board</Text>
         </View>
 
-        <View style={styles.divider} />
+
+      <ScrollView contentContainerStyle={styles.container}>
 
         {!user?.householdid ? (
           <View style={styles.emptyState}>
@@ -280,8 +286,6 @@ export default function ChoreBoard() {
                 </View>
               )}
 
-
-
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => setShowSettingDropdown((prev) => !prev)}
@@ -349,14 +353,16 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 72,
+    paddingTop: 170,
     paddingBottom: 110,
   },
   title: {
+    paddingTop: 15,
     fontSize: 30,
     fontWeight: "bold",
-    color: "white",
-    marginBottom: 24,
+    alignSelf: "center", 
+    color: "rgba(235, 235, 235, 0.92)",
+    marginBottom: 10,
   },
   emptyState: {
     backgroundColor: "rgba(255, 255, 255, 0.92)",
@@ -377,12 +383,6 @@ const styles = StyleSheet.create({
     color: "#4B5563",
     textAlign: "center",
   },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
   avatarButton: {
     width: 50,
     height: 50,
@@ -394,24 +394,25 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 23,
     backgroundColor: "#333",
-  },headerSpacer: {
+  },
+  headerSpacer: {
     width: 46,
   },
   modalOverlay: {
-  flex: 1,
-  backgroundColor: "rgba(0,0,0,0.35)",
-  flexDirection: "row",
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    flexDirection: "row",
   },
   menuContainer: {
-  width: "80%",
-  height: "100%",
-  backgroundColor: "#1C1C1E",
-  paddingTop: 90,
-  paddingHorizontal: 16,
-  borderTopRightRadius: 20,
-  borderBottomRightRadius: 20,
-  borderRightWidth: 1,
-  borderColor: "#2E2E32",
+    width: "80%",
+    height: "100%",
+    backgroundColor: "#1C1C1E",
+    paddingTop: 90,
+    paddingHorizontal: 16,
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
+    borderRightWidth: 1,
+    borderColor: "#2E2E32",
   },
   menuUsername: {
     color: "#fff",
@@ -443,10 +444,10 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   menuHeader: {
-  paddingTop: 40,
-  alignItems: "center",   // centers horizontally
-  justifyContent: "center",
-  marginBottom: 25,
+    paddingTop: 40,
+    alignItems: "center",   // centers horizontally
+    justifyContent: "center",
+    marginBottom: 25,
   },
   menuAvatar: {
     width: 90,
@@ -456,8 +457,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#333",
   },
   divider: {
-  height: 2,
-  backgroundColor: "#2E2E32",
+    height: 2,
+    backgroundColor: "#2E2E32",
     marginVertical: 10,
   },
   profileDropdown: {
@@ -468,16 +469,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 12,
   },
-
   profileDetail: {
     color: "#fff",
     fontSize: 14,
     marginBottom: 8,
     lineHeight: 20,
   },
-
   profileLabel: {
     fontWeight: "700",
     color: "#4A90E2",
   },
+  headerContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 60, // space for status bar
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    zIndex: 10,
+},
+greetingContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#010b1f", 
+  paddingVertical: 10,
+  paddingHorizontal: 16,
+  borderRadius: 999, 
+  alignSelf: "flex-start", 
+},
+greetingText: {
+  paddingLeft: 4, 
+  color: "#fff",
+  fontSize: 16,
+  fontWeight: "600",
+},
+headerRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+},
 });

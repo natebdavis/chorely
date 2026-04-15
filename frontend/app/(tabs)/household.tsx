@@ -11,7 +11,8 @@ import {
   TextInput,
   FlatList,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ImageBackground
 } from "react-native";
 const API_URL = "https://chorely-beta-release.onrender.com";
 
@@ -223,6 +224,12 @@ const handleJoinHousehold = async () => {
   );
 
   return (
+   <ImageBackground
+         source={require("../../assets/images/background.png")}
+         style={styles.background}
+         resizeMode="cover"
+    >
+
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -313,15 +320,19 @@ const handleJoinHousehold = async () => {
         </View>
       )}
     </KeyboardAvoidingView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
     flex: 1,
-    backgroundColor: "#121212", 
+    //backgroundColor: "#121212", 
     paddingHorizontal: 24,
     paddingTop: 50,
+  },
+  background: {
+    flex: 1,
   },
   centerContent: {
     flex: 1,
@@ -353,7 +364,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   memberCard: {
-    backgroundColor: "#1e1e1e",
+    backgroundColor: "#0c85e7a6",
     padding: 16,
     borderRadius: 8,
     marginBottom: 12,
