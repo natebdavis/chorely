@@ -2,11 +2,9 @@ from supabase import Client
 from typing import Union, Iterable
 
 from app.db.client import get_client
-from app.db.chore_repo import get_all_requested_chores
 from app.db.user_repo import get_requester, get_user
 from app.request import RequestStatus, create_RequestResponse, RequestResponse, RequestCreateRequest, RequestUpdateRequest, Request_Col_Name, Request_View_Col_Name, REQUEST_TABLE_NAME, REQUEST_VIEW
-from app.user import User_Col_Name, USER_TABLE_NAME
-from app.chore import Chore_Col_Name, CHORE_TABLE_NAME
+
 
 first = 0
 

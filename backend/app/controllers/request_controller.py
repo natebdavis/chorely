@@ -4,11 +4,9 @@ import datetime as DT
 from fastapi import APIRouter, HTTPException, Depends, status
 from app.chore import Status as ChoreStatus
 from app.user import UserResponse
-from app.db.client import get_client
 from app.database import get_current_user, get_user, get_user_requests, get_outgoing_pending_requests, create_request, get_request, update_request, get_requester, update_chore, create_notification
-from app.request import RequestResponse, RequestCreateRequest, RequestUpdateRequest, RequestStatus, Request_Col_Name, REQUEST_TABLE_NAME
-from app.user import User_Col_Name, USER_TABLE_NAME
-from app.db.chore_repo import get_all_requested_chores, get_chore
+from app.request import RequestResponse, RequestCreateRequest, RequestUpdateRequest, RequestStatus
+from app.db.chore_repo import get_chore
 from app.notification import NotificationCreateRequest, NotificationType
 
 
