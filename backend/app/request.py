@@ -9,6 +9,7 @@ Contributors: Gilligan Berlinski
 """
 
 REQUEST_TABLE_NAME = "requests"
+REQUEST_VIEW = "requests_view"
 
 class Request_Col_Name(Enum):
     requestid = "requestid"
@@ -17,6 +18,12 @@ class Request_Col_Name(Enum):
     requeststatus = "request_status"
     createdat = "created_at"
     respondedat = "responded_at"
+
+class Request_View_Col_Name(Enum):
+    chorename = "chore_name"
+    assigneename = "assignee_username"
+    requestername = "requester_username"
+    requesterid = "requester_userid"
 
 class RequestStatus(str, Enum):
     PENDING = "PENDING"
@@ -36,6 +43,7 @@ class RequestResponse(BaseModel):
     requested_assignee_userid: int
     requested_assignee_name: str
     requested_choreid: int
+    requested_chore_name: str
     request_status: RequestStatus
     created_at: str
     responded_at: Union[str, None]
@@ -44,15 +52,15 @@ class RequestUpdateRequest(BaseModel):
     updated_status: RequestStatus
     responded_at: str
 
-
-def create_RequestResponse(data: dict, requesterid: int, requester_name: str, requested_assignee_name: str) -> RequestResponse:
+def create_RequestResponse(data: dict) -> RequestResponse:
     return RequestResponse(
         requestid=data[Request_Col_Name.requestid.value],
-        requester_userid=requesterid,
-        requester_name=requester_name,
+        requester_userid=data[Request_View_Col_Name.requesterid.value],
+        requester_name=data[Request_View_Col_Name.requestername.value],
         requested_assignee_userid=data[Request_Col_Name.requestedassigneeid.value],
-        requested_assignee_name=requested_assignee_name,
+        requested_assignee_name=data[Request_View_Col_Name.assigneename.value],
         requested_choreid=data[Request_Col_Name.chorerequestid.value],
+        requested_chore_name=data[Request_View_Col_Name.chorename.value],
         request_status=data[Request_Col_Name.requeststatus.value],
         created_at=data[Request_Col_Name.createdat.value],
         responded_at=data[Request_Col_Name.respondedat.value]

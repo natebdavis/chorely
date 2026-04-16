@@ -4,9 +4,11 @@ import datetime as DT
 from fastapi import APIRouter, HTTPException, Depends, status
 from app.chore import Status as ChoreStatus
 from app.user import UserResponse
+from app.db.client import get_client
 from app.database import get_current_user, get_user, get_user_requests, get_outgoing_pending_requests, create_request, get_request, update_request, get_requester, update_chore, create_notification
-from app.request import RequestResponse, RequestCreateRequest, RequestUpdateRequest, RequestStatus
-from app.db.chore_repo import get_chore
+from app.request import RequestResponse, RequestCreateRequest, RequestUpdateRequest, RequestStatus, Request_Col_Name, REQUEST_TABLE_NAME
+from app.user import User_Col_Name, USER_TABLE_NAME
+from app.db.chore_repo import get_all_requested_chores, get_chore
 from app.notification import NotificationCreateRequest, NotificationType
 
 
@@ -22,15 +24,26 @@ def get_my_pending_requests(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Get all pending requests for the current user."""
-    return list(get_user_requests(current_user.userid))
 
+    response = get_user_requests(current_user.userid)
+
+    if response is None:
+        return []
+    else:
+        return response
 
 @router.get("/outgoing", response_model=Iterable[RequestResponse])
 def get_my_outgoing_pending_requests(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Get all outgoing pending requests for the current user."""
-    return list(get_outgoing_pending_requests(current_user.userid))
+
+    response = get_outgoing_pending_requests(current_user.userid)
+
+    if response is None:
+        return []
+    else:
+        return response
 
 @router.post("", response_model=RequestResponse)
 def create_chore_request(request: RequestCreateRequest, current_user: UserResponse = Depends(get_current_user)):
@@ -61,6 +74,14 @@ def create_chore_request(request: RequestCreateRequest, current_user: UserRespon
             detail="Requested assignee is not in the same household as the requester user",
         )
     
+    chore = get_chore(choreid=request.requested_choreid)
+
+    if chore.assignee:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Requested chore is already assigned to another user",
+        )
+
     try:    
         return create_request(request)
     except ValueError as e:
@@ -107,9 +128,15 @@ def accept_request(
             detail="Requested chore not found",
         )
     
+    if chore.assignee:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Requested chore has already assigned to another user",
+        )
+    
     now = DT.datetime.now().isoformat()
     
-    response = update_request(requestid, RequestUpdateRequest(updated_status=RequestStatus.ACCEPTED, responded_at=now))
+    response = update_request(requestid, RequestUpdateRequest(updated_status=RequestStatus.ACCEPTED.value, responded_at=now))
 
     if not response:
         raise HTTPException(
@@ -118,9 +145,10 @@ def accept_request(
         )
     
     response = update_chore(
+        householdid=current_user.householdid,
         choreid=chore.choreid,
         assignee_id=current_user.userid,
-        status=ChoreStatus.IN_PROGRESS,
+        status=ChoreStatus.IN_PROGRESS.name,
         status_provided=True,
         assignee_provided=True,
         priority=chore.priority,
