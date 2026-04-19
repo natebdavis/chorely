@@ -81,7 +81,22 @@ def create_chore_request(request: RequestCreateRequest, current_user: UserRespon
         )
 
     try:    
-        return create_request(request)
+        created_request = create_request(request)
+
+        if created_request:
+            now = DT.datetime.now().isoformat()
+            create_notification(
+            NotificationCreateRequest(
+                userid=requested_assignee.userid,
+                type=NotificationType.CHORE_REQUESTED.value,
+                title="Chore Requested",
+                message=f"{current_user.username} requested a chore from you: {chore.name}",
+                reference_id=created_request.requestid,
+                time=now,
+                is_read=False,)
+            )
+        return created_request
+    
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -12,6 +12,7 @@ class NotificationType(str, Enum):
     CHORE_ASSIGNED = "CHORE_ASSIGNED"
     CHORE_REJECTED = "CHORE_REJECTED"
     CHORE_COMPLETED = "CHORE_COMPLETED"
+    CHORE_REQUESTED = "CHORE_REQUESTED"
 
 
 class Notification(BaseModel):

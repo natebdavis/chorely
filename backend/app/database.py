@@ -36,6 +36,8 @@ from app.db.household_repo import (
     household_exists,
     join_household,
     leave_household,
+    get_owner_householdid,
+    transfer_household_ownership,
 )
 
 from app.db.notification_repo import (
@@ -110,6 +112,9 @@ __all__ = [
     "get_user_pending_invites",
     "get_pending_invite_for_household_user",
     "update_invite_status",
+    "get_owner_householdid",
+    "transfer_household_ownership",
+
 
 
     # requests

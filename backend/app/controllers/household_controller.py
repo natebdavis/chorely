@@ -3,8 +3,10 @@ from typing import List
 import datetime as DT
 
 from app.household import (
+    HouseholdRemoveMemberRequest,
     HouseholdResponse,
     HouseholdInviteRequest,
+    HouseholdTransferOwnershipRequest,
 )
 from app.invite import InviteCreateRequest, InviteStatus
 from app.notification import NotificationCreateRequest, NotificationType
@@ -20,6 +22,9 @@ from app.database import (
     get_user,
     create_invite,
     get_pending_invite_for_household_user,
+    get_owner_householdid,
+    transfer_household_ownership,
+    delete_household_if_empty
 )
 from app.user import UserResponse, get_full_name
 
@@ -81,7 +86,7 @@ def create_household(current_user: UserResponse = Depends(get_current_user)):
             detail="Failed to create household",
         )
 
-    joined_user = join_household(current_user.userid, new_household.householdid)
+    joined_user = join_household(userid=current_user.userid, householdid=new_household.householdid, is_owner=True)
 
     if not joined_user:
         raise HTTPException(
@@ -225,6 +230,18 @@ def leave_household_route(
             status_code=400,
             detail="User is not part of a household",
         )
+    
+    user_owned_householdid = get_owner_householdid(current_user.userid)
+    owner_leaving = False
+
+    if user_owned_householdid:
+        member_count = get_household_member_count(current_user.householdid)
+        if member_count > 1 and user_owned_householdid == current_user.householdid:
+            raise HTTPException(
+                status_code=403,
+                detail="Household owner can not leave household of two or more members without transferring ownership.",
+            )
+        owner_leaving = True
 
     left_user = leave_household(current_user.userid)
 
@@ -233,5 +250,90 @@ def leave_household_route(
             status_code=500,
             detail="Failed to leave household",
         )
-
+    
+    if owner_leaving:
+        delete_household_if_empty(user_owned_householdid)
+    
     return {"message": "User left household successfully"}
+
+@router.delete("/remove")
+def remove_member_from_household_route(
+    request: HouseholdRemoveMemberRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    if request.userid == current_user.userid:
+        raise HTTPException(
+            status_code=400,
+            detail="User cannot remove themselves from the household, must leave instead.",
+        )
+
+    householdid = current_user.householdid
+
+    if householdid is None:
+        raise HTTPException(
+            status_code=400,
+            detail="User is not part of a household",
+        )
+    
+    user_owned_householdid = get_owner_householdid(current_user.userid)
+
+    if user_owned_householdid is None or user_owned_householdid != householdid:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the household owner can remove members",
+        )
+
+    householdid_request = get_householdid(request.userid)
+
+    if householdid_request is None or householdid_request != householdid:
+        raise HTTPException(
+            status_code=403,
+            detail="User is not a member of your household",
+        )
+    
+    removed_user = leave_household(request.userid)
+
+    if not removed_user:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to remove user from household",
+        )
+    
+    return {"message": "User removed from household successfully"}
+
+@router.patch("/transfer-ownership")
+def transfer_household_ownership_route(
+    request: HouseholdTransferOwnershipRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    if request.new_owner_userid == current_user.userid:
+        raise HTTPException(
+            status_code=400,
+            detail="User cannot transfer ownership to themselves",
+        )
+
+    householdid = current_user.householdid
+
+    if householdid is None:
+        raise HTTPException(
+            status_code=400,
+            detail="User is not part of a household",
+        )
+
+    user_owned_householdid = get_owner_householdid(current_user.userid)
+
+    if user_owned_householdid is None or user_owned_householdid != householdid:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the household owner can transfer ownership",
+        )
+
+    success = transfer_household_ownership(householdid, request.new_owner_userid)
+
+    if not success:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to transfer household ownership",
+        )
+
+    return {"message": "Household ownership transferred successfully"}
