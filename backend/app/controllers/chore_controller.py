@@ -1,16 +1,18 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 import datetime as DT
 
 from app.database import (
     add_chore as db_add_chore,
     add_notification as db_add_notification,
     get_chores as db_get_chores,
+    get_chores_in_range as db_get_chores_in_range,
+    get_assigned_chores_in_range as db_get_assigned_chores_in_range,
     get_current_user,
     get_user as db_get_user,
     get_chore as db_get_chore,
     remove_chore as db_remove_chore,
     update_chore as db_update_chore,
-    edit_chore as db_edit_chore
+    edit_chore as db_edit_chore,
 )
 from app.user import UserResponse, get_full_name
 from app.chore import (
@@ -20,13 +22,17 @@ from app.chore import (
     ChoreEditRequest,
     ChoreResponse,
     ChoreUpdateRequest,
+    ChoreRangeResponse,
     Priority,
     Location,
     Type,
     Status,
 )
 from app.notification import NotificationCreateRequest, NotificationType
-from app.chore_generation import generate_due_chores_for_household
+from app.chore_generation import (
+    generate_due_chores_for_household_in_range,
+    build_chore_range_response,
+)
 
 """
 Module for managing Chore Controller operations.
@@ -213,7 +219,7 @@ def update_chore_route(
             assignee_provided=assignee_provided,
             priority=payload.priority,
             ctype=payload.ctype,
-            location=payload.location
+            location=payload.location,
         )
 
         if not updated:
@@ -263,6 +269,145 @@ def update_chore_route(
         )
 
 
+@router.get("/assigned/range", response_model=ChoreRangeResponse)
+def get_assigned_chores_range(
+    start_date: str = Query(..., description="Inclusive ISO date or datetime lower bound"),
+    end_date: str = Query(..., description="Inclusive ISO date or datetime upper bound"),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Retrieve chores assigned to the current user in a specific date range.
+
+    This endpoint still generates household recurring chores for the range first,
+    then filters the returned chores down to only those assigned to the user.
+    """
+    try:
+        householdid = current_user.householdid
+
+        if householdid is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User has not joined a household",
+            )
+
+        try:
+            range_start = DT.datetime.fromisoformat(start_date)
+            range_end = DT.datetime.fromisoformat(end_date)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date format. Use ISO format, e.g. 2026-04-01 or 2026-04-01T00:00:00",
+            )
+
+        if range_end < range_start:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="end_date must be greater than or equal to start_date",
+            )
+
+        generate_due_chores_for_household_in_range(
+            householdid=householdid,
+            range_start=range_start,
+            range_end=range_end,
+        )
+
+        chores = list(
+            db_get_assigned_chores_in_range(
+                householdid=householdid,
+                userid=current_user.userid,
+                start_date=range_start.isoformat(),
+                end_date=range_end.isoformat(),
+            )
+        )
+
+        return build_chore_range_response(
+            chores=chores,
+            range_start=range_start,
+            range_end=range_end,
+            now=DT.datetime.now(),
+            current_user_id=current_user.userid,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve assigned chores in range: {str(e)}",
+        )
+
+
+@router.get("/range", response_model=ChoreRangeResponse)
+def get_household_chores_in_range(
+    start_date: str = Query(..., description="Inclusive ISO date or datetime lower bound"),
+    end_date: str = Query(..., description="Inclusive ISO date or datetime upper bound"),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Retrieve chores for the current user's household in a specific date range.
+
+    This endpoint also generates any missing recurring chores for the requested
+    range before returning the response.
+
+    The response is optimized for mobile calendar/day caching and includes:
+    - chores grouped by date
+    - per-date calendar metadata such as overdue markers
+    """
+    try:
+        householdid = current_user.householdid
+
+        if householdid is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User has not joined a household",
+            )
+
+        try:
+            range_start = DT.datetime.fromisoformat(start_date)
+            range_end = DT.datetime.fromisoformat(end_date)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date format. Use ISO format, e.g. 2026-04-01 or 2026-04-01T00:00:00",
+            )
+
+        if range_end < range_start:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="end_date must be greater than or equal to start_date",
+            )
+
+        generate_due_chores_for_household_in_range(
+            householdid=householdid,
+            range_start=range_start,
+            range_end=range_end,
+        )
+
+        chores = list(
+            db_get_chores_in_range(
+                householdid=householdid,
+                start_date=range_start.isoformat(),
+                end_date=range_end.isoformat(),
+            )
+        )
+
+        return build_chore_range_response(
+            chores=chores,
+            range_start=range_start,
+            range_end=range_end,
+            now=DT.datetime.now(),
+            current_user_id=current_user.userid,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve chores in range: {str(e)}",
+        )
+
+
 @router.get("/{choreid}", response_model=ChoreResponse)
 def get_chore_route(
     choreid: int,
@@ -303,7 +448,8 @@ def get_household_chores(
 ):
     """
     Retrieve all chores for the current user's household.
-    Generates any missing recurring chore instances before returning chores.
+
+    Legacy endpoint retained for compatibility.
     """
     try:
         householdid = current_user.householdid
@@ -313,8 +459,6 @@ def get_household_chores(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User has not joined a household",
             )
-
-        generate_due_chores_for_household(householdid)
 
         return list(db_get_chores(householdid))
 
@@ -401,7 +545,7 @@ def create_chore(
             status=Status.IN_PROGRESS.name if payload.assignee_id is not None else Status.UNASSIGNED.name,
             priority=payload.priority,
             ctype=payload.ctype,
-            location=payload.location
+            location=payload.location,
         )
 
         created = db_add_chore(final_payload)

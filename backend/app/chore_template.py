@@ -27,7 +27,6 @@ class ChoreTemplate_Col_Name(Enum):
     repeat_interval = "repeat_interval"
     repeat_days_of_week = "repeat_days_of_week"
     repeat_day_of_month = "repeat_day_of_month"
-    preview_days = "preview_days"
     is_active = "is_active"
     last_generated_at = "last_generated_at"
     priority = "priority"
@@ -66,7 +65,6 @@ class ChoreTemplateCreateInput(BaseModel):
     repeat_interval: int = Field(default=1, ge=1)
     repeat_days_of_week: Union[list[int], None] = None
     repeat_day_of_month: Union[int, None] = Field(default=None, ge=1, le=31)
-    preview_days: int = Field(default=1, ge=0)
     priority: Union[str, None] = None
     ctype: Union[str, None] = None
     location: Union[str, None] = None
@@ -89,7 +87,6 @@ class ChoreTemplateCreateRequest(BaseModel):
     repeat_interval: int = Field(default=1, ge=1)
     repeat_days_of_week: Union[list[int], None] = None
     repeat_day_of_month: Union[int, None] = Field(default=None, ge=1, le=31)
-    preview_days: int = Field(default=1, ge=0)
     is_active: bool = True
     last_generated_at: Union[str, None] = None
     priority: Union[str, None] = None
@@ -111,7 +108,6 @@ class ChoreTemplateUpdateRequest(BaseModel):
     repeat_interval: Union[int, None] = Field(default=None, ge=1)
     repeat_days_of_week: Union[list[int], None] = None
     repeat_day_of_month: Union[int, None] = Field(default=None, ge=1, le=31)
-    preview_days: Union[int, None] = Field(default=None, ge=0)
     is_active: Union[bool, None] = None
     last_generated_at: Union[str, None] = None
     priority: Union[str, None] = None
@@ -136,7 +132,6 @@ class ChoreTemplateResponse(BaseModel):
     repeat_interval: int
     repeat_days_of_week: Union[list[int], None] = None
     repeat_day_of_month: Union[int, None] = None
-    preview_days: int
     is_active: bool
     last_generated_at: Union[str, None] = None
     priority: Union[str, None] = None
@@ -159,7 +154,6 @@ def create_ChoreTemplateCreateRequest(data: dict) -> ChoreTemplateCreateRequest:
         repeat_interval=data[ChoreTemplate_Col_Name.repeat_interval.value],
         repeat_days_of_week=data.get(ChoreTemplate_Col_Name.repeat_days_of_week.value),
         repeat_day_of_month=data.get(ChoreTemplate_Col_Name.repeat_day_of_month.value),
-        preview_days=data[ChoreTemplate_Col_Name.preview_days.value],
         is_active=data.get(ChoreTemplate_Col_Name.is_active.value, True),
         last_generated_at=data.get(ChoreTemplate_Col_Name.last_generated_at.value),
         priority=data.get(ChoreTemplate_Col_Name.priority.value),
@@ -183,7 +177,6 @@ def create_ChoreTemplateResponse(data: dict) -> ChoreTemplateResponse:
         repeat_interval=data[ChoreTemplate_Col_Name.repeat_interval.value],
         repeat_days_of_week=data.get(ChoreTemplate_Col_Name.repeat_days_of_week.value),
         repeat_day_of_month=data.get(ChoreTemplate_Col_Name.repeat_day_of_month.value),
-        preview_days=data[ChoreTemplate_Col_Name.preview_days.value],
         is_active=data[ChoreTemplate_Col_Name.is_active.value],
         last_generated_at=data.get(ChoreTemplate_Col_Name.last_generated_at.value),
         priority=data.get(ChoreTemplate_Col_Name.priority.value),

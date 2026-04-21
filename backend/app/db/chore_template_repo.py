@@ -107,7 +107,6 @@ def add_chore_template(
         ChoreTemplate_Col_Name.repeat_interval.value: template.repeat_interval,
         ChoreTemplate_Col_Name.repeat_days_of_week.value: template.repeat_days_of_week,
         ChoreTemplate_Col_Name.repeat_day_of_month.value: template.repeat_day_of_month,
-        ChoreTemplate_Col_Name.preview_days.value: template.preview_days,
         ChoreTemplate_Col_Name.is_active.value: template.is_active,
         ChoreTemplate_Col_Name.last_generated_at.value: template.last_generated_at,
         ChoreTemplate_Col_Name.priority.value: template.priority,
@@ -163,8 +162,6 @@ def update_chore_template(
         data[ChoreTemplate_Col_Name.repeat_days_of_week.value] = template.repeat_days_of_week
     if "repeat_day_of_month" in fields_set:
         data[ChoreTemplate_Col_Name.repeat_day_of_month.value] = template.repeat_day_of_month
-    if "preview_days" in fields_set:
-        data[ChoreTemplate_Col_Name.preview_days.value] = template.preview_days
     if "is_active" in fields_set:
         data[ChoreTemplate_Col_Name.is_active.value] = template.is_active
     if "last_generated_at" in fields_set:

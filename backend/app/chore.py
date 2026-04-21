@@ -7,7 +7,7 @@ from app.user import UserResponse, get_full_name
 
 """
 Module for managing Chore operations.
-Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
+Contributers: Gilligan Berlinski, Edmund Krajewski, Nathaniel Davis
 """
 
 CHORE_TABLE_NAME = "chores"
@@ -75,6 +75,14 @@ class ChoreDeleteRequest(BaseModel):
     choreid: int
 
 
+class ChoreRangeQuery(BaseModel):
+    """
+    Query schema for fetching chores in a date range.
+    """
+    start_date: str
+    end_date: str
+
+
 class ChoreResponse(BaseModel):
     """
     Response schema returned for Chore-related API requests.
@@ -93,6 +101,35 @@ class ChoreResponse(BaseModel):
     ctype: Union[str, None] = None
     priority: Union[str, None] = None
     location: Union[str, None] = None
+
+
+class CalendarDateMetaResponse(BaseModel):
+    """
+    Summary metadata for a calendar date.
+
+    Used by the frontend to decorate dates in the calendar view
+    without having to recalculate business logic client-side.
+    """
+    has_chores: bool = False
+    has_incomplete: bool = False
+    has_overdue: bool = False
+    has_assigned_to_me: bool = False
+    has_high_priority: bool = False
+    chore_count: int = 0
+
+
+class ChoreRangeResponse(BaseModel):
+    """
+    Range-based response for cached calendar/day views.
+
+    chores_by_date:
+        Maps YYYY-MM-DD -> list of chores due on that date
+
+    calendar_meta:
+        Maps YYYY-MM-DD -> summary flags used to decorate the calendar UI
+    """
+    chores_by_date: dict[str, list[ChoreResponse]]
+    calendar_meta: dict[str, CalendarDateMetaResponse]
 
 
 class Chore_Col_Name(Enum):
