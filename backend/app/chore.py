@@ -12,6 +12,7 @@ Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
 
 CHORE_TABLE_NAME = "chores"
 
+
 class ChoreEditRequest(BaseModel):
     """
     Request body schema for editing an existing chore from the frontend.
@@ -22,6 +23,7 @@ class ChoreEditRequest(BaseModel):
     priority: Union[str, None] = None
     location: Union[str, None] = None
     ctype: Union[str, None] = None
+
 
 class ChoreCreateInput(BaseModel):
     """
@@ -48,6 +50,7 @@ class ChoreCreateRequest(BaseModel):
     due_date: str
     requester_id: int
     assignee_id: Union[int, None] = None
+    template_id: Union[int, None] = None
     status: str
     ctype: Union[str, None] = None
     priority: Union[str, None] = None
@@ -84,6 +87,7 @@ class ChoreResponse(BaseModel):
     due_date: Union[str, None] = None
     requester_id: Union[int, None] = None
     assignee_id: Union[int, None] = None
+    template_id: Union[int, None] = None
     assignee: Union[str, None] = None
     status: Union[str, None] = None
     ctype: Union[str, None] = None
@@ -100,6 +104,7 @@ class Chore_Col_Name(Enum):
     due_date = "due_date"
     requester = "request_user"
     assignee = "assigned_user"
+    template_id = "template_id"
     status = "cstatus"
     householdid = "householdid"
     priority = "priority"
@@ -114,6 +119,7 @@ class Status(Enum):
     COMPLETE = auto()
     CANCELLED = auto()
 
+
 class Location(Enum):
     """Location of Chore."""
     KITCHEN = auto()
@@ -123,6 +129,7 @@ class Location(Enum):
     OUTSIDE = auto()
     SHARED = auto()
     STORE = auto()
+
 
 class Type(Enum):
     """Type of Chore."""
@@ -135,6 +142,7 @@ class Type(Enum):
     ADMINSTRATIVE = auto()
     ORGANIZING = auto()
     OTHER = auto()
+
 
 class Priority(Enum):
     """Priority of Chore."""
@@ -154,11 +162,11 @@ def create_ChoreCreateRequest(data: dict) -> ChoreCreateRequest:
         due_date=data[Chore_Col_Name.due_date.value],
         requester_id=data[Chore_Col_Name.requester.value],
         assignee_id=data[Chore_Col_Name.assignee.value],
+        template_id=data.get(Chore_Col_Name.template_id.value),
         status=status,
         priority=data[Chore_Col_Name.priority.value],
         ctype=data[Chore_Col_Name.ctype.value],
         location=data[Chore_Col_Name.location.value],
-
     )
 
 
@@ -181,6 +189,7 @@ def create_ChoreDeleteRequest(data: dict) -> ChoreDeleteRequest:
     return ChoreDeleteRequest(
         choreid=data[Chore_Col_Name.choreid.value]
     )
+
 
 def create_ChoreEditRequest(data: dict) -> ChoreEditRequest:
     return ChoreEditRequest(
@@ -205,6 +214,7 @@ def create_ChoreResponse(data: dict, assignee: Union[UserResponse, None] = None)
         due_date=data[Chore_Col_Name.due_date.value],
         requester_id=data[Chore_Col_Name.requester.value],
         assignee_id=data[Chore_Col_Name.assignee.value],
+        template_id=data.get(Chore_Col_Name.template_id.value),
         assignee=assignee_name,
         status=data[Chore_Col_Name.status.value],
         priority=data[Chore_Col_Name.priority.value],

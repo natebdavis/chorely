@@ -26,6 +26,7 @@ from app.chore import (
     Status,
 )
 from app.notification import NotificationCreateRequest, NotificationType
+from app.chore_generation import generate_due_chores_for_household
 
 """
 Module for managing Chore Controller operations.
@@ -36,6 +37,7 @@ Contributers: Edmund Krajewski, Gilligan Berlinski
 """
 
 router = APIRouter(prefix="/chores", tags=["chores"])
+
 
 @router.patch("/edit/{choreid}", response_model=ChoreResponse)
 def edit_chore_route(
@@ -60,14 +62,13 @@ def edit_chore_route(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Chore not found in user's household",
             )
-        
+
         if current_user.userid != chore.requester_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the requester can edit this chore",
             )
-        
-        # Validate priority, type, and location if they are provided
+
         if payload.priority is not None and payload.priority not in Priority.__members__:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -101,7 +102,8 @@ def edit_chore_route(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to edit chore: {str(e)}",
         )
-    
+
+
 @router.patch("/{choreid}", response_model=ChoreResponse)
 def update_chore_route(
     choreid: int,
@@ -139,8 +141,7 @@ def update_chore_route(
         final_status = existing.status
         if status_provided and payload.status is not None:
             final_status = payload.status.upper()
-        
-        # Validate priority, type, and location if they are provided
+
         if payload.priority is not None and payload.priority not in Priority.__members__:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -302,6 +303,7 @@ def get_household_chores(
 ):
     """
     Retrieve all chores for the current user's household.
+    Generates any missing recurring chore instances before returning chores.
     """
     try:
         householdid = current_user.householdid
@@ -311,6 +313,8 @@ def get_household_chores(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User has not joined a household",
             )
+
+        generate_due_chores_for_household(householdid)
 
         return list(db_get_chores(householdid))
 
@@ -353,8 +357,7 @@ def create_chore(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Assignee must be in the same household as the requester",
                 )
-            
-        # Validate priority, type, and location if they are provided
+
         if payload.priority is not None and payload.priority not in Priority.__members__:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -370,7 +373,7 @@ def create_chore(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid location value",
             )
-        
+
         try:
             due_date = DT.datetime.fromisoformat(payload.due_date)
             current_time = DT.datetime.now()
@@ -394,6 +397,7 @@ def create_chore(
             due_date=payload.due_date,
             requester_id=current_user.userid,
             assignee_id=payload.assignee_id,
+            template_id=None,
             status=Status.IN_PROGRESS.name if payload.assignee_id is not None else Status.UNASSIGNED.name,
             priority=payload.priority,
             ctype=payload.ctype,

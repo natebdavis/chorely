@@ -124,18 +124,19 @@ def add_chore(
         client = get_client()
 
     data = {
-        Chore_Col_Name.householdid.value: chore.householdid,
-        Chore_Col_Name.cname.value: chore.name,
-        Chore_Col_Name.description.value: chore.description,
-        Chore_Col_Name.request_date.value: chore.request_date,
-        Chore_Col_Name.due_date.value: chore.due_date,
-        Chore_Col_Name.requester.value: chore.requester_id,
-        Chore_Col_Name.assignee.value: chore.assignee_id,
-        Chore_Col_Name.status.value: chore.status,
-        Chore_Col_Name.priority.value: chore.priority,
-        Chore_Col_Name.ctype.value: chore.ctype,
-        Chore_Col_Name.location.value: chore.location,
-    }
+    Chore_Col_Name.householdid.value: chore.householdid,
+    Chore_Col_Name.cname.value: chore.name,
+    Chore_Col_Name.description.value: chore.description,
+    Chore_Col_Name.request_date.value: chore.request_date,
+    Chore_Col_Name.due_date.value: chore.due_date,
+    Chore_Col_Name.requester.value: chore.requester_id,
+    Chore_Col_Name.assignee.value: chore.assignee_id,
+    Chore_Col_Name.template_id.value: chore.template_id,
+    Chore_Col_Name.status.value: chore.status,
+    Chore_Col_Name.priority.value: chore.priority,
+    Chore_Col_Name.ctype.value: chore.ctype,
+    Chore_Col_Name.location.value: chore.location,
+}
 
     response = client.table(CHORE_TABLE_NAME).insert(data).execute()
     rows = response.data
