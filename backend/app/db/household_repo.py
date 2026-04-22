@@ -9,8 +9,10 @@ from app.household import (
     Household_Col_Name,
     HouseholdResponse,
 )
+from app.household import HOUSEHOLD_TABLE_NAME, Household_Col_Name
 from app.user import USER_TABLE_NAME, User_Col_Name, UserResponse, create_UserResponse
 from app.chore import CHORE_TABLE_NAME, Chore_Col_Name
+from app.invite import INVITE_TABLE_NAME, Invite_Col_Name
 
 """
 Module for household-related database operations.
@@ -68,6 +70,7 @@ def household_exists(
 def join_household(
     userid: int,
     householdid: int,
+    is_owner: bool = False,
     client: Union[Client, None] = None,
 ) -> Union[UserResponse, None]:
     """
@@ -78,6 +81,18 @@ def join_household(
     """
     if client is None:
         client = get_client()
+
+    if is_owner:
+        ownership_response = (
+            client
+            .table(HOUSEHOLD_TABLE_NAME)
+            .update({Household_Col_Name.ownerid.value: userid})
+            .eq(Household_Col_Name.householdid.value, householdid)
+            .execute()
+        )
+
+        if not ownership_response.data:
+            return None
 
     response = (
         client
@@ -157,11 +172,38 @@ def delete_household_if_empty(
         Chore_Col_Name.householdid.value, householdid
     ).execute()
 
+    client.table(INVITE_TABLE_NAME).delete().eq(
+        Invite_Col_Name.householdid.value, householdid).execute()
+
     client.table(HOUSEHOLD_TABLE_NAME).delete().eq(
         Household_Col_Name.householdid.value, householdid
     ).execute()
 
     return True
+
+def get_owner_householdid(userid: int, client: Union[Client, None] = None) -> Union[int, None]:
+   """
+    Get the householdid of a household owned by the user with the given userid.
+    
+    Output:
+        The householdid of the owned household, or None if no owned household exists.
+    """
+   if client is None:
+    client = get_client()
+
+    response = (
+        client
+        .table(HOUSEHOLD_TABLE_NAME)
+        .select(Household_Col_Name.householdid.value)
+        .eq(Household_Col_Name.ownerid.value, userid)
+        .execute()
+    )
+
+    if not response.data:
+        return None
+    else:
+        return response.data[first][Household_Col_Name.householdid.value]
+
 
 
 def get_household_member_count(
@@ -207,3 +249,27 @@ def create_household_db(
         householdid=householdid,
         member_count=member_count,
     )
+
+def transfer_household_ownership(
+    householdid: int,
+    new_owner_userid: int,
+    client: Union[Client, None] = None,
+) -> bool:
+    """
+    Transfer ownership of a household to a new owner.
+
+    Output:
+        True if transfer was successful, False otherwise.
+    """
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table(HOUSEHOLD_TABLE_NAME)
+        .update({Household_Col_Name.ownerid.value: new_owner_userid})
+        .eq(Household_Col_Name.householdid.value, householdid)
+        .execute()
+    )
+
+    return bool(response.data)

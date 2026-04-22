@@ -13,6 +13,7 @@ from app.db.user_repo import (
     is_phone_num_available,
     is_username_available,
     remove_user,
+    get_requester,
 )
 
 from app.db.chore_repo import (
@@ -35,6 +36,8 @@ from app.db.household_repo import (
     household_exists,
     join_household,
     leave_household,
+    get_owner_householdid,
+    transfer_household_ownership,
 )
 
 from app.db.notification_repo import (
@@ -57,6 +60,14 @@ from app.db.invite_repo import (
     update_invite_status,
 )
 
+from app.db.request_repo import (
+    get_request,
+    update_request,
+    get_outgoing_pending_requests,
+    get_user_requests,
+    create_request
+)
+
 __all__ = [
     "get_client",
     "authenticate_user",
@@ -77,6 +88,7 @@ __all__ = [
     "remove_chore",
     "update_chore",
     "edit_chore",
+    "get_requester",
 
     # households
     "create_household_db",
@@ -100,4 +112,15 @@ __all__ = [
     "get_user_pending_invites",
     "get_pending_invite_for_household_user",
     "update_invite_status",
+    "get_owner_householdid",
+    "transfer_household_ownership",
+
+
+
+    # requests
+    "get_request",
+    "update_request",
+    "get_outgoing_pending_requests",
+    "get_user_requests",
+    "create_request"
 ]

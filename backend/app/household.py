@@ -11,6 +11,7 @@ HOUSEHOLD_TABLE_NAME = "households"
 
 class Household_Col_Name(Enum):
     householdid = "householdid"
+    ownerid = "owner"
 
 
 class HouseholdCreateRequest(BaseModel):
@@ -23,8 +24,11 @@ class HouseholdCreateRequest(BaseModel):
 class HouseholdInviteRequest(BaseModel):
     userid: int
     
+class HouseholdRemoveMemberRequest(BaseModel):
+    userid: int
 
-
+class HouseholdTransferOwnershipRequest(BaseModel):
+    new_owner_userid: int
 
 class HouseholdResponse(BaseModel):
     """

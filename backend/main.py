@@ -7,6 +7,7 @@ from app.controllers.household_controller import router as household_router
 from app.controllers.invite_controller import router as invite_router
 from app.controllers.notification_controller import router as notification_router
 from app.controllers.user_controller import router as user_router
+from app.controllers.request_controller import router as request_router
 
 app = FastAPI()
 
@@ -24,6 +25,7 @@ app.include_router(household_router)
 app.include_router(invite_router)
 app.include_router(notification_router)
 app.include_router(user_router)
+app.include_router(request_router)
 
 
 @app.get("/")
