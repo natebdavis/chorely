@@ -90,6 +90,17 @@ class ChoreResponse(BaseModel):
     priority: Union[str, None] = None
     location: Union[str, None] = None
 
+class ChoreSearchRequest(BaseModel):
+    """
+    Request body schema for searching/filtering Chores.
+    """
+    status: Union[str, None] = None
+    priority: Union[str, None] = None
+    location: Union[str, None] = None
+    ctype: Union[str, None] = None
+    date_filter: Union[str, None] = None   # "TODAY" | "WEEK" | "MONTH"
+    weekday: Union[int, None] = None       # 0=Mon ... 6=Sun
+
 
 class Chore_Col_Name(Enum):
     """Column names for Chore database table."""

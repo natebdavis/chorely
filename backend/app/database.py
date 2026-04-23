@@ -26,7 +26,8 @@ from app.db.chore_repo import (
     get_chores,
     remove_chore,
     update_chore,
-    edit_chore
+    edit_chore,
+    get_filtered_chores
 )
 
 from app.db.household_repo import (
@@ -91,6 +92,7 @@ __all__ = [
     "edit_chore",
     "get_requester",
     "update_user_password",
+    "get_filtered_chores",
 
     # households
     "create_household_db",

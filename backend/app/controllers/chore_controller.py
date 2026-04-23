@@ -1,3 +1,5 @@
+from typing import Union
+
 from fastapi import APIRouter, HTTPException, status, Depends
 import datetime as DT
 
@@ -10,7 +12,8 @@ from app.database import (
     get_chore as db_get_chore,
     remove_chore as db_remove_chore,
     update_chore as db_update_chore,
-    edit_chore as db_edit_chore
+    edit_chore as db_edit_chore,
+    get_filtered_chores as db_get_filtered_chores
 )
 from app.user import UserResponse, get_full_name
 from app.chore import (
@@ -20,12 +23,14 @@ from app.chore import (
     ChoreEditRequest,
     ChoreResponse,
     ChoreUpdateRequest,
+    ChoreSearchRequest,
     Priority,
     Location,
     Type,
     Status,
 )
 from app.notification import NotificationCreateRequest, NotificationType
+from app.utils import Weekday, DateFilter
 
 """
 Module for managing Chore Controller operations.
@@ -313,6 +318,71 @@ def get_household_chores(
             )
 
         return list(db_get_chores(householdid))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve chores: {str(e)}",
+        )
+    
+@router.post("/filtered", response_model=list[ChoreResponse])
+def get_filtered_chores(
+    request: ChoreSearchRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Retrieve chores for the current user's household filtered by various criteria.
+    """
+    try:
+        householdid = current_user.householdid
+
+        if householdid is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User has not joined a household",
+            )
+        
+
+        if request.priority is not None and request.priority not in Priority.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid priority value",
+            )
+        if request.ctype is not None and request.ctype not in Type.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid type value",
+            )
+        if request.location is not None and request.location not in Location.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid location value",
+            )
+        if request.status is not None and request.status not in Status.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid status value",
+            )
+        if request.weekday is not None and (request.weekday < Weekday.MONDAY or request.weekday > Weekday.SUNDAY):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="weekday must be between 0 (Mon) and 6 (Sun)",
+            )
+        if request.date_filter is not None and request.date_filter not in DateFilter.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date_filter value",
+            )
+
+        return list(db_get_filtered_chores(householdid=householdid, 
+                                           status=Status[request.status] if request.status else None,
+                                           priority=Priority[request.priority] if request.priority else None,
+                                           ctype=Type[request.ctype] if request.ctype else None,
+                                           location=Location[request.location] if request.location else None,
+                                           weekday=Weekday(request.weekday) if request.weekday is not None else None,
+                                           date_filter=DateFilter[request.date_filter] if request.date_filter else None))
 
     except HTTPException:
         raise
