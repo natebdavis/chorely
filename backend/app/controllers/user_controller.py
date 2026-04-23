@@ -102,3 +102,4 @@ def update_password(request: UserPasswordUpdateRequest, current_user: UserRespon
         raise HTTPException(status_code=400, detail="Failed to update password")
 
     return {"message": "Password updated successfully"}
+
