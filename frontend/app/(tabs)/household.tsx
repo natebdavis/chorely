@@ -47,6 +47,7 @@ export default function Household() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdownFor, setShowDropdownFor] = useState<string | null>(null);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showHomeDropdown, setShowHomeDropdown] = useState(false);
   const [showSettingDropdown, setShowSettingDropdown] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const username = user?.username ?? "User";
@@ -257,7 +258,14 @@ const handleJoinHousehold = async () => {
             <Text style={styles.greetingText}>Hi, {username}</Text>
             <View style={styles.headerSpacer} />
           </View>
-          <Text style={styles.title}>Household</Text>
+           <Text style={styles.title}> My Household</Text>
+            <Text style={styles.subTitleText}>
+                House ID: {householdid ?? "N/A"}
+            </Text>
+
+            <Text style={styles.subTitleText}>
+                Number of Members: {members.length}
+            </Text>
         </View>
         {/* --- NEW HEADER END --- */}
 
@@ -267,33 +275,25 @@ const handleJoinHousehold = async () => {
     >
       {hasHousehold ? (
         <View style={styles.listContainer}>
-          <Text style={styles.titleText}>Your Household Members</Text>
-            
-            <Text style={styles.subTitleText}>
-                House ID: {householdid ?? "N/A"}
-            </Text>
-
-            <Text style={styles.subTitleText}>
-                Number of Members: {members.length}
-            </Text>
             
             {/* Search Bar */}
                 <View style={styles.searchContainer}>
+                  <View style = {styles.searchSection}>
+                     <Ionicons 
+                          name="search-outline" 
+                          size={20} 
+                          color="#888" 
+                           style={styles.searchIcon} 
+                        />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search members..."
+                        placeholder="Search members to invite..."
                         placeholderTextColor="#888"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
+                    </View>
                 </View>
-
-            <TouchableOpacity //this is the red button that allows a user to leave a household
-              style={styles.leaveButton}
-             onPress={handleLeaveHousehold}>
-            <Text style={styles.leaveButtonText}>Leave Household</Text>
-            
-          </TouchableOpacity>
 
           <FlatList
             data={members}
@@ -303,48 +303,7 @@ const handleJoinHousehold = async () => {
             style={{ flex: 1 }}
           />
           
-          {isAddingUser ? (
-            <View style={styles.addMemberContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter User ID to add"
-                placeholderTextColor="#888"
-                value={joinUserId}
-                onChangeText={(text) => {const onlyNumbers = text.replace(/[^0-9]/g, '');
-                  setJoinUserId(onlyNumbers);
-                }} //this ensures no one types in any letters
-                keyboardType="numeric"
-              />
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.cancelButton]}
-                  onPress={() => {
-                    setIsAddingUser(false);
-                    setJoinUserId(""); // Clear input if they cancel
-                  }}
-                >
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.submitButton, loading && styles.disabledButton]}
-                  onPress={handleJoinHousehold}
-                  disabled={loading}
-                >
-                  <Text style={styles.buttonText}>
-                    {loading ? "Adding..." : "Add User"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity 
-              style={styles.floatingButton} 
-              onPress={() => setIsAddingUser(true)}
-            >
-              <Text style={styles.floatingButtonText}>+ Add User Here</Text>
-            </TouchableOpacity>
-          )}
+      
 
         </View>
       ) : (
@@ -446,6 +405,31 @@ const handleJoinHousehold = async () => {
                 </Text>
               </View>
             )}
+
+              {/* new household tab where users can leave a household*/}
+             <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => setShowHomeDropdown((prev) => !prev)}
+            >
+              <Ionicons name="home" size={20} color="#fff" />
+              <Text style={styles.menuText}>Household</Text>
+              <View style={{ marginLeft: "auto" }}>
+                <Ionicons
+                  name={showSettingDropdown ? "chevron-up-outline" : "chevron-down-outline"}
+                  size={18}
+                  color="#fff"
+                />
+              </View>
+            </TouchableOpacity>
+            
+            {showHomeDropdown && (
+              <View style={styles.profileDropdown}>
+                <TouchableOpacity onPress={handleLeaveHousehold}>
+                <Text style={[styles.menuText, { color: "#ff8080" }]}>Leave Household</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+                 {/* end household dropdown */}
 
               <TouchableOpacity
                 style={styles.menuItem}
@@ -633,21 +617,33 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 15,
     paddingVertical: 10,
+    paddingTop: "62%",
     width: '100%',
   },
   searchInput: {
-      backgroundColor: '#fff',
+      backgroundColor: '#ffffff00',
       borderRadius: 8,
       padding: 12,
-      borderWidth: 1,
-      borderColor: '#ccc',
+      color: "white",
       fontSize: 16,
+      flex: 1,
   },
   buttonText: {
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
   },
+  searchSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    paddingHorizontal: 10,
+},
+searchIcon: {
+  marginRight: 10,
+},
   headerContainer: {
       position: "absolute",
       top: 0,
