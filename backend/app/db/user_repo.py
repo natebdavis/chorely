@@ -11,9 +11,10 @@ from app.user import (
     UserResponse,
     create_UserResponse,
     UserPasswordUpdateRequest,
+    UserProfilePicResponse,
 )
 from app.chore import CHORE_TABLE_NAME, Chore_Col_Name
-from app.utils import verify_password, get_password_hash
+from app.utils import verify_password, get_password_hash, BUCKET
 
 """
 Module for user-related database operations.
@@ -262,6 +263,126 @@ def get_requester(choreid: int, client: Union[Client, None] = None) -> Union[Use
     
     return get_user(userid=requester_id, client=client)
 
+def get_profile_pic_url(userid: int, client: Union[Client, None] = None) -> Union[UserProfilePicResponse, None]:
+    """
+    Get a user's profile picture signed URL (private bucket safe).
+    """
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table(USER_TABLE_NAME)
+        .select(User_Col_Name.profile_url.value)
+        .eq(User_Col_Name.userid.value, userid)
+        .maybe_single()
+        .execute()
+    )
+
+    data = response.data
+    if not data or not data.get(User_Col_Name.profile_url.value):
+        return None
+
+    file_path = data.get(User_Col_Name.profile_url.value)
+
+    if not file_path:
+        return None
+
+    file_path = file_path.strip()
+
+    # 🔐 Generate signed URL for private bucket
+    signed = client.storage.from_(BUCKET).create_signed_url(
+        file_path,
+        60 * 60  # 1 hour expiry
+    )
+
+    return UserProfilePicResponse(url=signed["signedURL"])
+
+def delete_profile_pic(userid: int, client: Union[Client, None] = None) -> bool:
+
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table(USER_TABLE_NAME)
+        .select(User_Col_Name.profile_url.value)
+        .eq(User_Col_Name.userid.value, userid)
+        .single()
+        .execute()
+    )
+
+    if not response.data:
+        return False
+
+    file_path = response.data.get(User_Col_Name.profile_url.value)
+
+    if not file_path:
+        return False
+
+    try:
+        delete_response = client.storage.from_(BUCKET).remove([file_path])
+
+        if hasattr(delete_response, "error") and delete_response.error:
+            raise Exception(delete_response.error)
+
+    except Exception as e:
+        raise Exception(f"Failed to delete profile picture: {str(e)}")
+
+    db_response = (
+        client
+        .table(USER_TABLE_NAME)
+        .update({User_Col_Name.profile_url.value: None})
+        .eq(User_Col_Name.userid.value, userid)
+        .execute()
+    )
+
+    if not db_response.data:
+        raise Exception("Failed to update user's profile URL in database.")
+
+    return True
+
+def upload_profile_pic(userid: int, profile_path: str, profile_data, profile_file_options: Union[dict, None] = None, client: Union[Client, None] = None) -> dict:
+    """
+    Upload a user's profile picture to Supabase storage and update the user's profile URL in the database.
+    
+    Output:
+    A dictionary containing the file name and public URL of the uploaded profile picture.
+    
+    Raises:
+    Exception if the upload fails or if updating the user's profile URL in the database fails.
+    """
+
+    if client is None:
+        client = get_client()
+
+    try:
+        response = client.storage.from_(BUCKET).upload(
+            path=profile_path,
+            file=profile_data,
+            file_options=profile_file_options
+        )
+    except Exception as e:
+        raise Exception(f"Failed to upload profile picture: {str(e)}")
+
+    public_url = client.storage.from_(BUCKET).get_public_url(profile_path)
+
+    response = (
+        client
+        .table(USER_TABLE_NAME)
+        .update({User_Col_Name.profile_url.value: profile_path})
+        .eq(User_Col_Name.userid.value, userid)
+        .execute()
+    )
+
+    if not response.data:
+        raise Exception("Failed to update user's profile URL in database.")
+    
+    return {
+        "file_name": profile_path,
+        "url": public_url
+    }
+
 def _get_user_passhash(userid: int, client: Union[Client, None] = None) -> Union[str, None]:
     """
     Get a user's password hash from the database.
@@ -332,4 +453,7 @@ def update_user_password(
         return True
     else:
         return False
+    
+
+
 

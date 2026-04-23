@@ -73,6 +73,12 @@ class UserPasswordUpdateRequest(BaseModel):
     old_password: str
     new_password: str
 
+class UserProfilePicResponse(BaseModel):
+    """
+    Response schema for User profile picture retrieval.
+    """
+    url: str
+
 
 class User_Col_Name(Enum):
     userid = "userid"

@@ -15,6 +15,10 @@ from app.db.user_repo import (
     remove_user,
     get_requester,
     update_user_password,
+    upload_profile_pic,
+    get_profile_pic_url,
+    delete_profile_pic,
+
 )
 
 from app.db.chore_repo import (
@@ -93,6 +97,9 @@ __all__ = [
     "get_requester",
     "update_user_password",
     "get_filtered_chores",
+    "upload_profile_pic",
+    "get_profile_pic_url",
+    "delete_profile_pic",
 
     # households
     "create_household_db",

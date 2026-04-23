@@ -11,6 +11,17 @@ from enum import Enum
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+BUCKET = "images"
+
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif"
+}
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
 class DateFilter(str, Enum):
     TODAY = "today"
