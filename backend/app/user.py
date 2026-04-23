@@ -65,6 +65,13 @@ class UsersToken(BaseModel):
     access_token: str
     token_type: str
 
+class UserPasswordUpdateRequest(BaseModel):
+    """
+    Request body schema for updating a User's password.
+    """
+    old_password: str
+    new_password: str
+
 
 class User_Col_Name(Enum):
     userid = "userid"

@@ -7,8 +7,9 @@ from app.database import (
     is_email_available,
     is_phone_num_available,
     get_current_user,
+    update_user_password,
 )
-from app.user import UserResponse, UserCreateRequest
+from app.user import UserResponse, UserCreateRequest, UserPasswordUpdateRequest
 from app.utils import get_password_hash
 
 """
@@ -83,3 +84,21 @@ def create_user(request: UserCreateRequest):
         "message": "User created successfully",
         "userid": created_user.userid,
     }
+
+@router.patch("/update-password")
+def update_password(request: UserPasswordUpdateRequest, current_user: UserResponse = Depends(get_current_user)):
+    """
+    Update the password of the currently authenticated user.
+    """
+    
+    try:
+        success = update_user_password(request, current_user.userid)
+    except TypeError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to update password")
+
+    return {"message": "Password updated successfully"}

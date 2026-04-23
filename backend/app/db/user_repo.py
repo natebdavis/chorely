@@ -10,8 +10,10 @@ from app.user import (
     UserCreateRequest,
     UserResponse,
     create_UserResponse,
+    UserPasswordUpdateRequest,
 )
 from app.chore import CHORE_TABLE_NAME, Chore_Col_Name
+from app.utils import verify_password, get_password_hash
 
 """
 Module for user-related database operations.
@@ -259,3 +261,75 @@ def get_requester(choreid: int, client: Union[Client, None] = None) -> Union[Use
     requester_id = data[first][Chore_Col_Name.requester.value]
     
     return get_user(userid=requester_id, client=client)
+
+def _get_user_passhash(userid: int, client: Union[Client, None] = None) -> Union[str, None]:
+    """
+    Get a user's password hash from the database.
+
+    Output:
+        The user's password hash as a string, or None if user not found.
+    """
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table(USER_TABLE_NAME)
+        .select(User_Col_Name.passhash.value)
+        .eq(User_Col_Name.userid.value, userid)
+        .maybe_single()
+        .execute()
+    )
+
+    data = response.data
+    if not data:
+        return None
+
+    return data[User_Col_Name.passhash.value].strip()
+
+def update_user_password(
+    password_update_request: UserPasswordUpdateRequest,
+    userid: int,
+    client: Union[Client, None] = None,
+) -> bool:
+    """
+    Update a user's password if the old password is correct.
+
+    Output:
+        True if the password was updated successfully, False otherwise.
+
+    Raises:
+        TypeError if the user is not found.
+        ValueError if the old password is incorrect.
+    """
+    if client is None:
+        client = get_client()
+
+    user_response = get_user(userid=userid, client=client)
+    if not user_response:
+        raise TypeError("User not found.")
+
+
+    # Verify old password
+    if not verify_password(plain_password=password_update_request.old_password, hashed_password=_get_user_passhash(userid=userid, client=client)):
+        raise ValueError("Old password is incorrect.")
+    
+    if password_update_request.old_password == password_update_request.new_password:
+        raise ValueError("New password cannot be the same as the old password.")
+
+    hashed_new_password = get_password_hash(password_update_request.new_password)
+
+    # Update to new password
+    response = (
+        client
+        .table(USER_TABLE_NAME)
+        .update({User_Col_Name.passhash.value: hashed_new_password})
+        .eq(User_Col_Name.userid.value, userid)
+        .execute()
+    )
+
+    if response.data:
+        return True
+    else:
+        return False
+

@@ -14,6 +14,7 @@ from app.db.user_repo import (
     is_username_available,
     remove_user,
     get_requester,
+    update_user_password,
 )
 
 from app.db.chore_repo import (
@@ -89,6 +90,7 @@ __all__ = [
     "update_chore",
     "edit_chore",
     "get_requester",
+    "update_user_password",
 
     # households
     "create_household_db",
