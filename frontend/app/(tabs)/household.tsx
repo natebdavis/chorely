@@ -21,7 +21,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 //const API_URL = "https://chorely-beta-release.onrender.com";
-const API_URL = "http://10.0.0.7:8000"
+//const API_URL = "http://10.0.0.7:8000"
+const API_URL = "http://127.0.0.1:8000"
 
 import { useAuth } from "../../components/AuthContext";
 interface Member {
@@ -299,14 +300,14 @@ const handleJoinHousehold = async () => {
     try {
       setInvitingUserId(inviteeUserId);
 
-      const response = await fetch(`${API_URL}/invites`, {
+      const response = await fetch(`${API_URL}/households/invite`,  {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          invitee_userid: inviteeUserId,
+          userid: inviteeUserId,
         }),
       });
 

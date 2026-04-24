@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Image,
   ImageBackground,
@@ -9,13 +9,17 @@ import {
   Text,
   TouchableOpacity,
   View,
+  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAuth } from "../../components/AuthContext";
+//const API_URL = "http://10.0.0.7:8000"
+const API_URL = "http://127.0.0.1:8000"
 
 export default function NotificationsScreen() {
   const { user, logout } = useAuth();
+  const token = user?.token;
 
   const username = user?.username ?? "User";
   const userId = user?.userid ?? "N/A";
@@ -26,6 +30,43 @@ export default function NotificationsScreen() {
   const [activeTab, setActiveTab] = useState<"inbox" | "sent">("inbox");
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showSettingDropdown, setShowSettingDropdown] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  type NotificationItem = {
+  notificationid: number;
+  userid: number;
+  type: string;
+  title: string;
+  message: string;
+  reference_id: number | null;
+  time: string;
+  is_read: boolean;
+};
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_URL}/notifications`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
+        console.log("Notifications:", data);
+
+        if (response.ok) {
+          setNotifications(data);
+        }
+      } catch (error) {
+        console.log("Notification fetch error:", error);
+      }
+    };
+
+    fetchNotifications();
+  }, [token]);
 
   return (
     <ImageBackground
@@ -82,29 +123,36 @@ export default function NotificationsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.emptyCard}>
-          <Ionicons
-            name={
-              activeTab === "inbox"
-                ? "mail-outline"
-                : "paper-plane-outline"
-            }
-            size={42}
-            color="#4A90E2"
-          />
+          {activeTab === "sent" ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="paper-plane-outline" size={42} color="#4A90E2" />
 
-          <Text style={styles.emptyTitle}>
-            {activeTab === "inbox"
-              ? "No inbox notifications yet"
-              : "No sent notifications yet"}
-          </Text>
+            <Text style={styles.emptyTitle}>No sent notifications yet</Text>
 
-          <Text style={styles.emptyText}>
-            {activeTab === "inbox"
-              ? "Invites, chore requests, and updates you receive will appear here."
-              : "Invites and requests you send to others will appear here."}
-          </Text>
-        </View>
+            <Text style={styles.emptyText}>
+              Invites and requests you send to others will appear here.
+            </Text>
+          </View>
+        ) : notifications.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="mail-outline" size={42} color="#4A90E2" />
+
+            <Text style={styles.emptyTitle}>No inbox notifications yet</Text>
+
+            <Text style={styles.emptyText}>
+              Invites, chore requests, and updates you receive will appear here.
+            </Text>
+          </View>
+        ) : (
+          notifications.map((item) => (
+            <View key={item.notificationid} style={styles.notificationCard}>
+              <Text style={styles.notificationTitle}>{item.title}</Text>
+              <Text style={styles.notificationMessage}>{item.message}</Text>
+            </View>
+          ))
+        )}
+
+
       </ScrollView>
 
       <Modal
@@ -443,4 +491,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#4A90E2",
   },
+  notificationCard: {
+    backgroundColor: "white",
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 12,
+},
+notificationTitle: {
+  fontSize: 16,
+  fontWeight: "700",
+  color: "#111",
+},
+notificationMessage: {
+  fontSize: 14,
+  color: "#555",
+  marginTop: 4,
+},
 });
