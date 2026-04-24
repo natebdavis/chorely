@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
+from typing import List
 
 from app.database import (
     get_user,
+    get_users,
+    get_all_users,
     add_user,
     is_username_available,
     is_email_available,
@@ -20,6 +23,38 @@ Contributors: Edmund Krajewski, Gilligan Berlinski
 """
 
 router = APIRouter(tags=["users"], prefix="/user")
+
+
+
+@router.get("/search", response_model=List[UserResponse])
+def search_users(
+    q: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Search users by username
+    """
+    if len(q.strip()) < 2:
+        return []
+
+    users = get_all_users()
+    query = q.lower().strip()
+
+    results = []
+
+    for user in users:
+        if user.userid == current_user.userid:
+            continue
+
+        if user.householdid == current_user.householdid:
+            continue
+
+        if (
+            query in user.username.lower()
+        ):
+            results.append(user)
+            
+    return results
 
 
 @router.get("/by-username/{username}", response_model=UserResponse)

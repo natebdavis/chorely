@@ -90,6 +90,14 @@ def get_users(
 
     return [create_UserResponse(entry) for entry in data]
 
+def get_all_users():
+    response = get_client().table("users").select("*").execute()
+
+    if not response.data:
+        return []
+
+    return [create_UserResponse(user) for user in response.data]
+
 
 def add_user(
     user: UserCreateRequest,
