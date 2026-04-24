@@ -17,6 +17,7 @@ from app.database import (
     edit_chore as db_edit_chore,
     get_filtered_chores as db_get_filtered_chores,
 )
+
 from app.user import UserResponse, get_full_name
 from app.chore import (
     ChoreCreateInput,
@@ -32,12 +33,16 @@ from app.chore import (
     Type,
     Status,
 )
+
 from app.notification import NotificationCreateRequest, NotificationType
 from app.utils import Weekday, DateFilter
 from app.chore_generation import (
     generate_due_chores_for_household_in_range,
     build_chore_range_response,
 )
+
+router = APIRouter(prefix="/chores", tags=["chores"])
+
 
 """
 Module for managing Chore Controller operations.
@@ -590,7 +595,11 @@ def create_chore(
 
         try:
             due_date = DT.datetime.fromisoformat(payload.due_date)
-            current_time = DT.datetime.now()
+
+            if due_date.tzinfo is not None:
+                current_time = DT.datetime.now(due_date.tzinfo)
+            else:
+                current_time = DT.datetime.now()
 
             if due_date < current_time:
                 raise HTTPException(
