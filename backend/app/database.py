@@ -14,6 +14,10 @@ from app.db.user_repo import (
     is_username_available,
     remove_user,
     get_requester,
+    update_user_password,
+    upload_profile_pic,
+    get_profile_pic_url,
+    delete_profile_pic,
 )
 
 from app.db.chore_repo import (
@@ -28,6 +32,7 @@ from app.db.chore_repo import (
     remove_chore,
     update_chore,
     edit_chore,
+    get_filtered_chores,
 )
 
 from app.db.chore_template_repo import (
@@ -92,6 +97,10 @@ __all__ = [
     "is_username_available",
     "remove_user",
     "get_requester",
+    "update_user_password",
+    "upload_profile_pic",
+    "get_profile_pic_url",
+    "delete_profile_pic",
 
     # chores
     "add_chore",
@@ -105,6 +114,7 @@ __all__ = [
     "remove_chore",
     "update_chore",
     "edit_chore",
+    "get_filtered_chores",
 
     # recurring chore templates
     "add_chore_template",

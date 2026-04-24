@@ -42,6 +42,7 @@ class UserResponse(BaseModel):
     email: Union[EmailStr, None] = None
     phone_num: Union[int, None] = None
     householdid: Union[int, None] = None
+    profile_url: Union[str, None] = None
 
 
 class UserInUpdate(BaseModel):
@@ -65,6 +66,19 @@ class UsersToken(BaseModel):
     access_token: str
     token_type: str
 
+class UserPasswordUpdateRequest(BaseModel):
+    """
+    Request body schema for updating a User's password.
+    """
+    old_password: str
+    new_password: str
+
+class UserProfilePicResponse(BaseModel):
+    """
+    Response schema for User profile picture retrieval.
+    """
+    url: str
+
 
 class User_Col_Name(Enum):
     userid = "userid"
@@ -75,6 +89,7 @@ class User_Col_Name(Enum):
     email = "email"
     phone = "phone"
     householdid = "householdid"
+    profile_url = "profile_url"
 
 
 def create_UserCreateRequest(data: dict) -> UserCreateRequest:
@@ -97,6 +112,7 @@ def create_UserResponse(data: dict) -> UserResponse:
         email=data[User_Col_Name.email.value],
         phone_num=data[User_Col_Name.phone.value],
         householdid=data[User_Col_Name.householdid.value],
+        profile_url=data[User_Col_Name.profile_url.value],
     )
 
 
