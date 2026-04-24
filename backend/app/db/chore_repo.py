@@ -15,7 +15,7 @@ from app.chore import (
     create_ChoreEditRequest,
     Location,
     Type,
-    Priority
+    Priority,
 )
 from app.db.client import get_client
 from app.user import UserResponse, search_user
@@ -25,7 +25,7 @@ from app.utils import Weekday, DateFilter
 """
 Module for chore-related database operations.
 
-Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
+Contributors: Edmund Krajewski, Gilligan Berlinski
 """
 
 first = 0
@@ -91,7 +91,7 @@ def get_chores(
     if not chore_data:
         return []
 
-    users = list(get_users(householdid=householdid, client=client))
+    users = list(get_users(householdid=householdid, client=client) or [])
 
     chores = []
 
@@ -221,6 +221,114 @@ def get_filtered_chores(
 
     return chores
 
+def get_chores_in_range(
+    householdid: int,
+    start_date: str,
+    end_date: str,
+    client: Union[Client, None] = None,
+) -> Iterable[ChoreResponse]:
+    """
+    Get all chores in a household whose due_date falls within the inclusive
+    requested range.
+
+    Inputs:
+        householdid: household to search within
+        start_date: ISO datetime lower bound
+        end_date: ISO datetime upper bound
+
+    Output:
+        An iterable of ChoreResponse objects in the specified household and date range.
+
+    Raises:
+        ValueError if a chore is assigned to a user not in that household.
+    """
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table(CHORE_TABLE_NAME)
+        .select("*")
+        .eq(Chore_Col_Name.householdid.value, householdid)
+        .gte(Chore_Col_Name.due_date.value, start_date)
+        .lte(Chore_Col_Name.due_date.value, end_date)
+        .order(Chore_Col_Name.due_date.value)
+        .execute()
+    )
+
+    chore_data = response.data or []
+    if not chore_data:
+        return []
+
+    users = list(get_users(householdid=householdid, client=client) or [])
+
+    chores = []
+
+    for chore in chore_data:
+        assignee_id = chore[Chore_Col_Name.assignee.value]
+
+        if assignee_id is None:
+            chores.append(create_ChoreResponse(data=chore, assignee=None))
+            continue
+
+        assignee: Union[UserResponse, None] = search_user(assignee_id, users)
+
+        if assignee is None:
+            error_choreid = chore[Chore_Col_Name.choreid.value]
+            raise ValueError(
+                f"Chore id: {error_choreid} has an assignee not apart of the household."
+            )
+
+        chores.append(create_ChoreResponse(data=chore, assignee=assignee))
+
+    return chores
+
+
+def get_assigned_chores_in_range(
+    householdid: int,
+    userid: int,
+    start_date: str,
+    end_date: str,
+    client: Union[Client, None] = None,
+) -> Iterable[ChoreResponse]:
+    """
+    Get all chores in a household assigned to a specific user whose due_date
+    falls within the inclusive requested range.
+
+    Inputs:
+        householdid: household to search within
+        userid: assignee user id
+        start_date: ISO datetime lower bound
+        end_date: ISO datetime upper bound
+
+    Output:
+        An iterable of ChoreResponse objects assigned to the specified user
+        in the specified household and date range.
+    """
+    if client is None:
+        client = get_client()
+
+    response = (
+        client
+        .table(CHORE_TABLE_NAME)
+        .select("*")
+        .eq(Chore_Col_Name.householdid.value, householdid)
+        .eq(Chore_Col_Name.assignee.value, userid)
+        .gte(Chore_Col_Name.due_date.value, start_date)
+        .lte(Chore_Col_Name.due_date.value, end_date)
+        .order(Chore_Col_Name.due_date.value)
+        .execute()
+    )
+
+    chore_data = response.data or []
+    if not chore_data:
+        return []
+
+    assignee = get_user(userid=userid, client=client)
+
+    return [create_ChoreResponse(row, assignee=assignee) for row in chore_data]
+
+
 def add_chore(
     chore: ChoreCreateRequest,
     client: Union[Client, None] = None,
@@ -242,6 +350,7 @@ def add_chore(
         Chore_Col_Name.due_date.value: chore.due_date,
         Chore_Col_Name.requester.value: chore.requester_id,
         Chore_Col_Name.assignee.value: chore.assignee_id,
+        Chore_Col_Name.template_id.value: chore.template_id,
         Chore_Col_Name.status.value: chore.status,
         Chore_Col_Name.priority.value: chore.priority,
         Chore_Col_Name.ctype.value: chore.ctype,
@@ -285,24 +394,38 @@ def remove_chore(
 
     return bool(response.data)
 
+
 def edit_chore(
-    chore: ChoreEditRequest, choreid: int,
+    chore: ChoreEditRequest,
+    choreid: int,
     client: Union[Client, None] = None,
 ) -> Union[ChoreResponse, None]:
     """
-    Edit an existing chore in the database.
+    Edit an existing chore in the database using PATCH semantics.
+    Only provided fields are updated.
     """
     if client is None:
         client = get_client()
 
-    data = {
-        Chore_Col_Name.cname.value: chore.name,
-        Chore_Col_Name.description.value: chore.description,
-        Chore_Col_Name.due_date.value: chore.due_date,
-        Chore_Col_Name.priority.value: chore.priority,
-        Chore_Col_Name.location.value: chore.location,
-        Chore_Col_Name.ctype.value: chore.ctype,
-    }
+    fields_set = getattr(chore, "model_fields_set", set())
+
+    data = {}
+
+    if "name" in fields_set:
+        data[Chore_Col_Name.cname.value] = chore.name
+    if "description" in fields_set:
+        data[Chore_Col_Name.description.value] = chore.description
+    if "due_date" in fields_set:
+        data[Chore_Col_Name.due_date.value] = chore.due_date
+    if "priority" in fields_set:
+        data[Chore_Col_Name.priority.value] = chore.priority
+    if "location" in fields_set:
+        data[Chore_Col_Name.location.value] = chore.location
+    if "ctype" in fields_set:
+        data[Chore_Col_Name.ctype.value] = chore.ctype
+
+    if not data:
+        return get_chore(choreid=choreid, client=client)
 
     response = (
         client
@@ -316,7 +439,7 @@ def edit_chore(
     if not rows:
         return None
 
-    return create_ChoreResponse(rows[first])
+    return get_chore(choreid=choreid, client=client)
 
 
 def update_chore(

@@ -18,7 +18,6 @@ from app.db.user_repo import (
     upload_profile_pic,
     get_profile_pic_url,
     delete_profile_pic,
-
 )
 
 from app.db.chore_repo import (
@@ -26,12 +25,22 @@ from app.db.chore_repo import (
     get_all_completed_chores,
     get_all_in_progress_assigned_chores,
     get_all_requested_chores,
+    get_assigned_chores_in_range,
     get_chore,
     get_chores,
+    get_chores_in_range,
     remove_chore,
     update_chore,
     edit_chore,
-    get_filtered_chores
+    get_filtered_chores,
+)
+
+from app.db.chore_template_repo import (
+    add_chore_template,
+    get_chore_template,
+    get_chore_templates,
+    update_chore_template,
+    deactivate_chore_template,
 )
 
 from app.db.household_repo import (
@@ -71,13 +80,15 @@ from app.db.request_repo import (
     update_request,
     get_outgoing_pending_requests,
     get_user_requests,
-    create_request
+    create_request,
 )
 
 __all__ = [
     "get_client",
     "authenticate_user",
     "get_current_user",
+
+    # users
     "add_user",
     "get_user",
     "get_users",
@@ -85,21 +96,32 @@ __all__ = [
     "is_phone_num_available",
     "is_username_available",
     "remove_user",
+    "get_requester",
+    "update_user_password",
+    "upload_profile_pic",
+    "get_profile_pic_url",
+    "delete_profile_pic",
+
+    # chores
     "add_chore",
     "get_all_completed_chores",
     "get_all_in_progress_assigned_chores",
     "get_all_requested_chores",
+    "get_assigned_chores_in_range",
     "get_chore",
     "get_chores",
+    "get_chores_in_range",
     "remove_chore",
     "update_chore",
     "edit_chore",
-    "get_requester",
-    "update_user_password",
     "get_filtered_chores",
-    "upload_profile_pic",
-    "get_profile_pic_url",
-    "delete_profile_pic",
+
+    # recurring chore templates
+    "add_chore_template",
+    "get_chore_template",
+    "get_chore_templates",
+    "update_chore_template",
+    "deactivate_chore_template",
 
     # households
     "create_household_db",
@@ -109,12 +131,18 @@ __all__ = [
     "household_exists",
     "join_household",
     "leave_household",
+    "get_owner_householdid",
+    "transfer_household_ownership",
+
+    # notifications
     "add_notification",
     "create_notification",
     "get_notification",
     "get_notifications",
     "mark_notification_read",
     "remove_notification",
+
+    # invites
     "cancel_pending_invites_for_user",
     "create_invite",
     "get_invite",
@@ -123,15 +151,11 @@ __all__ = [
     "get_user_pending_invites",
     "get_pending_invite_for_household_user",
     "update_invite_status",
-    "get_owner_householdid",
-    "transfer_household_ownership",
-
-
 
     # requests
     "get_request",
     "update_request",
     "get_outgoing_pending_requests",
     "get_user_requests",
-    "create_request"
+    "create_request",
 ]
