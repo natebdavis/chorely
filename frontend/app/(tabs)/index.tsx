@@ -315,7 +315,40 @@ export default function ChoreBoard() {
                 </View>
               )}
 
-           
+          <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                setMenuVisible(false);
+                router.push("/");
+              }}
+              >
+              <Ionicons name="home-outline" size={20} color="#fff" />
+              <Text style={styles.menuText}>Chore Board</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+                onPress={() => {
+                setMenuVisible(false);
+                router.push("/household");
+                }}
+              >
+              <Ionicons name="home" size={20} color="#fff" />
+              <Text style={styles.menuText}>Household</Text>
+              </TouchableOpacity>
+
+
+              <TouchableOpacity
+              style={styles.menuItem}
+                onPress={() => {
+                setMenuVisible(false);
+                router.push("/leaderboard");
+                }}
+              >
+              <Ionicons name="trophy" size={20} color="#fff" />
+              <Text style={styles.menuText}>Leaderboard</Text>
+              </TouchableOpacity>
+
 
             <TouchableOpacity
               style={styles.menuItem}
