@@ -15,11 +15,13 @@ import {
   Modal,
   Pressable,
   Image,
+  ScrollView,
   ImageBackground
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-const API_URL = "https://chorely-beta-release.onrender.com";
+//const API_URL = "https://chorely-beta-release.onrender.com";
+const API_URL = "http://10.0.0.7:8000"
 
 import { useAuth } from "../../components/AuthContext";
 interface Member {
@@ -54,6 +56,10 @@ export default function Household() {
   const userId = user?.userid ?? "N/A";
   const phone = user?.userid ?? "N/A"; //need to update to actual phone
   const email = user?.userid ?? "N/A";
+
+  const [searchResults, setSearchResults] = useState<Member[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [invitingUserId, setInvitingUserId] = useState<number | null>(null);
 
 const fetchMembers = async () => {
     if (!token) 
@@ -240,6 +246,89 @@ const handleJoinHousehold = async () => {
     </View>
   );
 
+
+  const handleSearchUsers = async (query: string) => {
+    setSearchQuery(query);
+
+    if (!token) {
+    console.log("No token found for user search");
+    setSearchResults([]);
+    return;
+    }
+    
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/user/search?q=${encodeURIComponent(query.trim())}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.log("Search error:", error);
+      setSearchResults([]);
+    }
+  };
+
+  useEffect(() => {
+  const timeout = setTimeout(() => {
+    if (searchQuery.length >= 2) {
+      handleSearchUsers(searchQuery);
+    } else {
+      setSearchResults([]); 
+    }
+  }, 300);
+
+  return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+
+  const handleSendInvite = async (inviteeUserId: number) => {
+    try {
+      setInvitingUserId(inviteeUserId);
+
+      const response = await fetch(`${API_URL}/invites`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          invitee_userid: inviteeUserId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        Alert.alert("Error", data.detail || "Failed to send invite.");
+        return;
+      }
+
+      Alert.alert("Success", "Invite sent successfully.");
+      setSearchQuery("");
+      setSearchResults([]);
+    } catch (error) {
+      console.log("Send invite error:", error);
+      Alert.alert("Error", "Something went wrong while sending the invite.");
+    } finally {
+      setInvitingUserId(null);
+    }
+  };
+
+
   return (
    <ImageBackground
          source={require("../../assets/images/background.png")}
@@ -255,17 +344,19 @@ const handleJoinHousehold = async () => {
                 style={styles.avatar}
               />
             </TouchableOpacity>
+            
             <Text style={styles.greetingText}>Hi, {username}</Text>
             <View style={styles.headerSpacer} />
           </View>
-           <Text style={styles.title}> My Household</Text>
+
+          <View style={styles.householdInfoContainer}>
             <Text style={styles.subTitleText}>
                 House ID: {householdid ?? "N/A"}
             </Text>
-
             <Text style={styles.subTitleText}>
                 Number of Members: {members.length}
             </Text>
+          </View>
         </View>
         {/* --- NEW HEADER END --- */}
 
@@ -274,6 +365,7 @@ const handleJoinHousehold = async () => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {hasHousehold ? (
+        
         <View style={styles.listContainer}>
             
             {/* Search Bar */}
@@ -290,11 +382,56 @@ const handleJoinHousehold = async () => {
                         placeholder="Search members to invite..."
                         placeholderTextColor="#888"
                         value={searchQuery}
-                        onChangeText={setSearchQuery}
+                        onChangeText={handleSearchUsers}
                     />
                     </View>
+                 
+                  {searchLoading && (
+                      <Text style={styles.searchStatusText}>Searching...</Text>
+                    )}
+
+                    {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                      <Text style={styles.searchStatusText}>No matching users found.</Text>
+                    )}
+
+                    {searchResults.length > 0 && (
+                <View style={styles.searchResultsWrapper}>
+                  <ScrollView
+                    style={styles.searchResultsScroll}
+                    nestedScrollEnabled={true}
+                  >
+                    {searchResults.map((item) => (
+                      <View key={item.userid} style={styles.searchResultCard}>
+                        <View>
+                          <Text style={styles.searchResultUsername}>@{item.username}</Text>
+                          <Text style={styles.searchResultName}>
+                            {item.fname} {item.lname}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.inviteButton}
+                          onPress={() => handleSendInvite(item.userid)}
+                          disabled={invitingUserId === item.userid}
+                        >
+                          <Text style={styles.inviteButtonText}>
+                            {invitingUserId === item.userid ? "Sending..." : "send invite"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              
+              )}
+         
                 </View>
 
+                
+
+           <Text style={styles.subTitleText}>Members</Text>
+
+          {/*This is the card list that displays each user under members*/}
           <FlatList
             data={members}
             keyExtractor={(item) => item.userid.toString()}
@@ -303,7 +440,6 @@ const handleJoinHousehold = async () => {
             style={{ flex: 1 }}
           />
           
-      
 
         </View>
       ) : (
@@ -406,6 +542,17 @@ const handleJoinHousehold = async () => {
               </View>
             )}
 
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+              setMenuVisible(false);
+              router.push("/");
+            }}
+            >
+            <Ionicons name="home-outline" size={20} color="#fff" />
+            <Text style={styles.menuText}>Chore Board</Text>
+          </TouchableOpacity>
+
               {/* new household tab where users can leave a household*/}
              <TouchableOpacity
               style={styles.menuItem}
@@ -421,6 +568,7 @@ const handleJoinHousehold = async () => {
                 />
               </View>
             </TouchableOpacity>
+
             
             {showHomeDropdown && (
               <View style={styles.profileDropdown}>
@@ -501,8 +649,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "bold",
     color: "white",
-    marginBottom: 20,
-    textAlign: "left",
+    marginBottom: 10,
+    textAlign: "left"
   },
   text: { 
     fontSize: 18,
@@ -615,10 +763,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#080a7e",
   },
   searchContainer: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    paddingTop: "62%",
+    paddingHorizontal: 0,
+    paddingVertical: 12,
     width: '100%',
+    marginTop: 10,
+    marginBottom: 10,
+    paddingTop: "45%"
   },
   searchInput: {
       backgroundColor: '#ffffff00',
@@ -642,7 +792,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
 },
 searchIcon: {
-  marginRight: 10,
+    marginRight: 10,
 },
   headerContainer: {
       position: "absolute",
@@ -770,4 +920,84 @@ searchIcon: {
     fontWeight: "700",
     color: "#4A90E2",
   },
+  householdInfoContainer: {
+  marginTop: 18,
+  paddingLeft: 6,
+},
+searchResultsContainer: {
+  marginTop: 8,
+  marginBottom: 16,
+},
+
+searchResultCard: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  backgroundColor: "rgba(255,255,255,0.95)",
+  borderRadius: 10,
+  paddingVertical: 12,
+  paddingHorizontal: 14,
+  marginBottom: 10,
+},
+
+searchResultUsername: {
+  fontSize: 16,
+  fontWeight: "700",
+  color: "#111",
+},
+
+searchResultName: {
+  fontSize: 14,
+  color: "#555",
+  marginTop: 2,
+},
+
+inviteButton: {
+  backgroundColor: "#2b75d5",
+  paddingVertical: 8,
+  paddingHorizontal: 14,
+  borderRadius: 8,
+},
+
+inviteButtonText: {
+  color: "white",
+  fontWeight: "bold",
+  fontSize: 14,
+},
+
+searchStatusText: {
+  color: "white",
+  fontSize: 14,
+  marginTop: 8,
+  marginBottom: 12,
+},
+searchDropdown: {
+  backgroundColor: "#1e1e1e",
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: "#333",
+  marginTop: 4,
+  overflow: "hidden",
+},
+searchResultItem: {
+  paddingVertical: 10,
+  paddingHorizontal: 14,
+  borderBottomWidth: 1,
+  borderBottomColor: "#2a2a2a",
+},
+noResultsText: {
+  color: "#888",
+  padding: 14,
+  textAlign: "center",
+},
+searchResultsWrapper: {
+  maxHeight: 220, // controls how many show (~3 cards)
+  marginTop: 8,
+  borderRadius: 10,
+  overflow: "hidden",
+},
+
+searchResultsScroll: {
+  width: "100%",
+},
   });
