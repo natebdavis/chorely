@@ -67,7 +67,6 @@ type SentInviteItem = {
         });
 
         const data = await response.json();
-        console.log("Notifications:", data);
 
         if (response.ok) {
           setNotifications(data);
@@ -126,6 +125,8 @@ type SentInviteItem = {
     if (response.ok) {
       Alert.alert("Success", "Invite accepted!");
 
+      setInviteStatuses((prev) => ({...prev, [inviteid]: "ACCEPTED",}));
+
       setNotifications((prev) =>
         prev.map((item) =>
           item.reference_id === inviteid
@@ -134,7 +135,6 @@ type SentInviteItem = {
                 type: "INVITE_ACCEPTED",
                 title: "Invite Accepted",
                 message: "You accepted this household invite.",
-               [inviteid]: "ACCEPTED",
               }
             : item
         )
@@ -163,6 +163,7 @@ const handleDeclineInvite = async (inviteid: number) => {
 
     if (response.ok) {
       Alert.alert("Success", "Invite declined.");
+      setInviteStatuses((prev) => ({...prev, [inviteid]: "DECLINED",}));
 
       setNotifications((prev) =>
         prev.map((item) =>
@@ -172,7 +173,6 @@ const handleDeclineInvite = async (inviteid: number) => {
                 type: "INVITE_DECLINED",
                 title: "Invite Declined",
                 message: "You declined this household invite.",
-                [inviteid]: "DECLINED",
               }
             : item
         )
@@ -212,6 +212,32 @@ const fetchPendingInvites = async () => {
   }
 };
 
+
+const handleDeleteNotification = async (notificationid: number) => {
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${API_URL}/notifications/${notificationid}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      setNotifications((prev) =>
+        prev.filter((item) => item.notificationid !== notificationid)
+      );
+    } else {
+      Alert.alert("Error", data.detail || "Failed to delete notification.");
+    }
+  } catch (error) {
+    console.log("Delete notification error:", error);
+    Alert.alert("Error", "Something went wrong.");
+  }
+};
 
   return (
     <ImageBackground
@@ -307,12 +333,23 @@ const fetchPendingInvites = async () => {
        ) : (
     notifications.map((item) => (
       <View key={item.notificationid} style={styles.notificationCard}>
-        <Text style={styles.notificationTitle}>{item.title}</Text>
+        
+       <View style={styles.notificationHeader}>
+          <Text style={styles.notificationTitle}>{item.title}</Text>
+
+          <TouchableOpacity
+            onPress={() => handleDeleteNotification(item.notificationid)}
+          >
+            <Ionicons name="trash-outline" size={22} color="#dc2626" />
+          </TouchableOpacity>
+        </View>
+
+
         <Text style={styles.notificationMessage}>{item.message}</Text>
 
-        {item.type === "INVITE" && item.reference_id !== null ? (
+        {item.type === "INVITE" && item.reference_id !== null && inviteStatuses[item.reference_id] === "PENDING" ? (
         
-        
+    
         
         <View style={styles.inviteButtonRow}>
           <TouchableOpacity
@@ -329,11 +366,13 @@ const fetchPendingInvites = async () => {
             <Text style={styles.inviteButtonText}>Decline</Text>
           </TouchableOpacity>
         </View>
-      ) : item.type === "INVITE_DECLINED" ? (
-        <Text style={styles.declinedStatus}>Declined</Text>
-      ) : item.type === "INVITE_ACCEPTED" ? (
-        <Text style={styles.acceptedStatus}>Accepted</Text>
-      ) : null}
+          ) : item.reference_id !== null &&
+              inviteStatuses[item.reference_id] === "DECLINED" ? (
+            <Text style={styles.declinedStatus}>Declined</Text>
+          ) : item.reference_id !== null &&
+              inviteStatuses[item.reference_id] === "ACCEPTED" ? (
+            <Text style={styles.acceptedStatus}>Accepted</Text>
+          ) : null}
     </View>
   ))
         )}
@@ -730,5 +769,10 @@ acceptedStatus: {
   color: "#16a34a",
   fontWeight: "700",
 },
-
+notificationHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+},
 });
