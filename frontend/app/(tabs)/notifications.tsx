@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
   FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,6 +32,8 @@ export default function NotificationsScreen() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showSettingDropdown, setShowSettingDropdown] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [sentInvites, setSentInvites] = useState<SentInviteItem[]>([]);
+  const [inviteStatuses, setInviteStatuses] = useState<Record<number, string>>({});
 
   type NotificationItem = {
   notificationid: number;
@@ -43,7 +46,16 @@ export default function NotificationsScreen() {
   is_read: boolean;
 };
 
-  useEffect(() => {
+type SentInviteItem = {
+  inviteid: number;
+  householdid: number;
+  inviter_userid: number;
+  invitee_userid: number;
+  status: string;
+  created_at: string;
+  responded_at: string | null;
+};
+
     const fetchNotifications = async () => {
       if (!token) return;
 
@@ -65,8 +77,141 @@ export default function NotificationsScreen() {
       }
     };
 
-    fetchNotifications();
-  }, [token]);
+
+  const fetchSentInvites = async () => {
+    if (!token) 
+      return;
+
+    try {
+      const response = await fetch(`${API_URL}/invites/outgoing`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSentInvites(data);
+      } else {
+        console.log("Sent invite error:", data);
+      }
+    } catch (error) {
+      console.log("Error fetching sent invites:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "sent") {
+      fetchSentInvites();
+      fetchNotifications();
+      fetchPendingInvites();
+    }
+  }, [activeTab, token]);
+
+
+  const handleAcceptInvite = async (inviteid: number) => {
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${API_URL}/invites/${inviteid}/accept`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      Alert.alert("Success", "Invite accepted!");
+
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.reference_id === inviteid
+            ? {
+                ...item,
+                type: "INVITE_ACCEPTED",
+                title: "Invite Accepted",
+                message: "You accepted this household invite.",
+               [inviteid]: "ACCEPTED",
+              }
+            : item
+        )
+      );
+    } else {
+      Alert.alert("Error", data.detail || "Failed to accept invite.");
+    }
+  } catch (error) {
+    console.log("Accept invite error:", error);
+    Alert.alert("Error", "Something went wrong.");
+  }
+};
+
+const handleDeclineInvite = async (inviteid: number) => {
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${API_URL}/invites/${inviteid}/decline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      Alert.alert("Success", "Invite declined.");
+
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.reference_id === inviteid
+            ? {
+                ...item,
+                type: "INVITE_DECLINED",
+                title: "Invite Declined",
+                message: "You declined this household invite.",
+                [inviteid]: "DECLINED",
+              }
+            : item
+        )
+      );
+    } else {
+      Alert.alert("Error", data.detail || "Failed to decline invite.");
+    }
+  } catch (error) {
+    console.log("Decline invite error:", error);
+    Alert.alert("Error", "Something went wrong.");
+  }
+};
+
+const fetchPendingInvites = async () => {
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${API_URL}/invites`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const statusMap: Record<number, string> = {};
+
+      data.forEach((invite: SentInviteItem) => {
+        statusMap[invite.inviteid] = invite.status;
+      });
+
+      setInviteStatuses(statusMap);
+    }
+  } catch (error) {
+    console.log("Pending invite fetch error:", error);
+  }
+};
+
 
   return (
     <ImageBackground
@@ -124,16 +269,32 @@ export default function NotificationsScreen() {
         </View>
 
           {activeTab === "sent" ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="paper-plane-outline" size={42} color="#4A90E2" />
+            sentInvites.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Ionicons name="paper-plane-outline" size={42} color="#4A90E2" />
 
-            <Text style={styles.emptyTitle}>No sent notifications yet</Text>
+                <Text style={styles.emptyTitle}>No sent notifications yet</Text>
 
-            <Text style={styles.emptyText}>
-              Invites and requests you send to others will appear here.
-            </Text>
-          </View>
-        ) : notifications.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  Invites and requests you send to others will appear here.
+                </Text>
+              </View>
+            ) : (
+              sentInvites.map((item) => (
+                <View key={item.inviteid} style={styles.notificationCard}>
+                  <Text style={styles.notificationTitle}>Household Invite Sent</Text>
+
+                  <Text style={styles.notificationMessage}>
+                    Invite sent to User ID: {item.invitee_userid}
+
+                  </Text>
+
+                  <Text style={styles.statusText}>Status: {item.status}</Text>
+                </View>
+              ))
+            )
+
+        )  : notifications.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="mail-outline" size={42} color="#4A90E2" />
 
@@ -143,13 +304,38 @@ export default function NotificationsScreen() {
               Invites, chore requests, and updates you receive will appear here.
             </Text>
           </View>
-        ) : (
-          notifications.map((item) => (
-            <View key={item.notificationid} style={styles.notificationCard}>
-              <Text style={styles.notificationTitle}>{item.title}</Text>
-              <Text style={styles.notificationMessage}>{item.message}</Text>
-            </View>
-          ))
+       ) : (
+    notifications.map((item) => (
+      <View key={item.notificationid} style={styles.notificationCard}>
+        <Text style={styles.notificationTitle}>{item.title}</Text>
+        <Text style={styles.notificationMessage}>{item.message}</Text>
+
+        {item.type === "INVITE" && item.reference_id !== null ? (
+        
+        
+        
+        <View style={styles.inviteButtonRow}>
+          <TouchableOpacity
+            style={[styles.inviteButton, styles.acceptButton]}
+            onPress={() => handleAcceptInvite(item.reference_id!)}
+          >
+            <Text style={styles.inviteButtonText}>Accept</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.inviteButton, styles.declineButton]}
+            onPress={() => handleDeclineInvite(item.reference_id!)}
+          >
+            <Text style={styles.inviteButtonText}>Decline</Text>
+          </TouchableOpacity>
+        </View>
+      ) : item.type === "INVITE_DECLINED" ? (
+        <Text style={styles.declinedStatus}>Declined</Text>
+      ) : item.type === "INVITE_ACCEPTED" ? (
+        <Text style={styles.acceptedStatus}>Accepted</Text>
+      ) : null}
+    </View>
+  ))
         )}
 
 
@@ -507,4 +693,42 @@ notificationMessage: {
   color: "#555",
   marginTop: 4,
 },
+inviteButtonRow: {
+  flexDirection: "row",
+  gap: 10,
+  marginTop: 14,
+},
+inviteButton: {
+  flex: 1,
+  paddingVertical: 10,
+  borderRadius: 10,
+  alignItems: "center",
+},
+acceptButton: {
+  backgroundColor: "#16a34a",
+},
+declineButton: {
+  backgroundColor: "#dc2626",
+},
+inviteButtonText: {
+  color: "white",
+  fontWeight: "700",
+},
+statusText: {
+  marginTop: 8,
+  fontSize: 13,
+  fontWeight: "700",
+  color: "#4A90E2",
+},
+declinedStatus: {
+  marginTop: 12,
+  color: "#dc2626",
+  fontWeight: "700",
+},
+acceptedStatus: {
+  marginTop: 12,
+  color: "#16a34a",
+  fontWeight: "700",
+},
+
 });
