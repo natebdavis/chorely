@@ -83,6 +83,10 @@ from app.db.request_repo import (
     create_request,
 )
 
+from app.db.leaderboard_repo import (
+    get_leaderboard
+)
+
 __all__ = [
     "get_client",
     "authenticate_user",
@@ -158,4 +162,7 @@ __all__ = [
     "get_outgoing_pending_requests",
     "get_user_requests",
     "create_request",
+
+    # leaderboard
+    "get_leaderboard"
 ]

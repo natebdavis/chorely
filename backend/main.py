@@ -9,6 +9,7 @@ from app.controllers.notification_controller import router as notification_route
 from app.controllers.user_controller import router as user_router
 from app.controllers.request_controller import router as request_router
 from app.controllers.chore_template_controller import router as chore_template_router
+from app.controllers.leaderboard_controller import router as leaderboard_router
 
 app = FastAPI()
 
@@ -28,6 +29,7 @@ app.include_router(notification_router)
 app.include_router(user_router)
 app.include_router(request_router)
 app.include_router(chore_template_router)
+app.include_router(leaderboard_router)
 
 @app.get("/")
 def root():
