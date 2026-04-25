@@ -104,7 +104,9 @@ type SentInviteItem = {
     if (activeTab === "sent") {
       fetchSentInvites();
       fetchNotifications();
-      fetchPendingInvites();
+      fetchInviteHistory();
+     
+       //fetchPendingInvites();
     }
   }, [activeTab, token]);
 
@@ -186,11 +188,37 @@ const handleDeclineInvite = async (inviteid: number) => {
   }
 };
 
-const fetchPendingInvites = async () => {
+// const fetchPendingInvites = async () => {
+//   if (!token) return;
+
+//   try {
+//     const response = await fetch(`${API_URL}/invites`, {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     });
+
+//     const data = await response.json();
+
+//     if (response.ok) {
+//       const statusMap: Record<number, string> = {};
+
+//       data.forEach((invite: SentInviteItem) => {
+//         statusMap[invite.inviteid] = invite.status;
+//       });
+
+//       setInviteStatuses(statusMap);
+//     }
+//   } catch (error) {
+//     console.log("Pending invite fetch error:", error);
+//   }
+// };
+
+const fetchInviteHistory = async () => {
   if (!token) return;
 
   try {
-    const response = await fetch(`${API_URL}/invites`, {
+    const response = await fetch(`${API_URL}/invites/history`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -206,12 +234,18 @@ const fetchPendingInvites = async () => {
       });
 
       setInviteStatuses(statusMap);
+    } else {
+      console.log("Invite history error:", data);
     }
   } catch (error) {
-    console.log("Pending invite fetch error:", error);
+    console.log("Invite history fetch error:", error);
   }
 };
 
+useEffect(() => {
+  fetchNotifications();
+  fetchInviteHistory();
+}, [token]);
 
 const handleDeleteNotification = async (notificationid: number) => {
   if (!token) return;

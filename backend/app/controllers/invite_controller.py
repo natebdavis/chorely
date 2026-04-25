@@ -8,6 +8,7 @@ from app.database import (
     get_invite,
     get_outgoing_pending_invites,
     get_user_pending_invites,
+    get_user_invites,
     update_invite_status,
     join_household,
     get_household_member_count,
@@ -34,6 +35,13 @@ def get_my_outgoing_pending_invites(
     current_user: UserResponse = Depends(get_current_user),
 ):
     return list(get_outgoing_pending_invites(current_user.userid))
+
+
+@router.get("/history", response_model=List[InviteResponse])
+def get_my_invite_history(
+    current_user: UserResponse = Depends(get_current_user),
+):
+    return list(get_user_invites(current_user.userid))
 
 
 @router.post("/{inviteid}/accept")
