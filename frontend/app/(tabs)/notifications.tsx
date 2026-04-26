@@ -90,8 +90,12 @@ type SentInviteItem = {
 
       const data = await response.json();
 
-      if (response.ok) {
-        setSentInvites(data);
+     if (response.ok) {
+      const onlyMySentInvites = data.filter(
+        (invite: SentInviteItem) => Number(invite.inviter_userid) === Number(user?.userid)
+      );
+
+      setSentInvites(onlyMySentInvites);
       } else {
         console.log("Sent invite error:", data);
       }
