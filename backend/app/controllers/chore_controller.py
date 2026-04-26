@@ -49,10 +49,6 @@ from app.chore_generation import (
 
 router = APIRouter(prefix="/chores", tags=["chores"])
 
-
-DUE_SOON_REMINDER_HOURS = 24
-
-
 def _parse_iso_datetime(value: str) -> DT.datetime:
     return DT.datetime.fromisoformat(value.replace("Z", "+00:00"))
 
@@ -97,6 +93,11 @@ def _send_chore_reminders_for_current_user(
 ):
     now_string = DT.datetime.now().isoformat()
 
+    reminder_hours = current_user.chore_reminder_hours_before_due or 24
+
+    if reminder_hours <= 0:
+        return
+
     for chore in chores:
         if chore.assignee_id != current_user.userid:
             continue
@@ -125,7 +126,7 @@ def _send_chore_reminders_for_current_user(
             )
             continue
 
-        due_soon_cutoff = now + DT.timedelta(hours=DUE_SOON_REMINDER_HOURS)
+        due_soon_cutoff = now + DT.timedelta(hours=reminder_hours)
 
         if now <= due_date <= due_soon_cutoff:
             _create_chore_notification_once(

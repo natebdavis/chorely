@@ -32,6 +32,7 @@ class UserCreateRequest(BaseModel):
     email: EmailStr
     phone_num: Union[int, None] = None
     password: str
+    chore_reminder_hours_before_due: int = 24
 
 
 class UserResponse(BaseModel):
@@ -43,7 +44,10 @@ class UserResponse(BaseModel):
     phone_num: Union[int, None] = None
     householdid: Union[int, None] = None
     profile_url: Union[str, None] = None
+    chore_reminder_hours_before_due: int = 24
 
+class UserReminderSettingsUpdateRequest(BaseModel):
+    chore_reminder_hours_before_due: int
 
 class UserInUpdate(BaseModel):
     """
@@ -57,6 +61,7 @@ class UserInUpdate(BaseModel):
     email: Union[EmailStr, None] = None
     phone_num: Union[int, None] = None
     householdid: Union[int, None] = None
+    chore_reminder_hours_before_due: Union[int, None] = None
 
 
 class UsersToken(BaseModel):
@@ -66,12 +71,14 @@ class UsersToken(BaseModel):
     access_token: str
     token_type: str
 
+
 class UserPasswordUpdateRequest(BaseModel):
     """
     Request body schema for updating a User's password.
     """
     old_password: str
     new_password: str
+
 
 class UserProfilePicResponse(BaseModel):
     """
@@ -90,6 +97,7 @@ class User_Col_Name(Enum):
     phone = "phone"
     householdid = "householdid"
     profile_url = "profile_url"
+    chore_reminder_hours_before_due = "chore_reminder_hours_before_due"
 
 
 def create_UserCreateRequest(data: dict) -> UserCreateRequest:
@@ -100,6 +108,10 @@ def create_UserCreateRequest(data: dict) -> UserCreateRequest:
         lname=data[User_Col_Name.lname.value],
         email=data[User_Col_Name.email.value],
         phone_num=data[User_Col_Name.phone.value],
+        chore_reminder_hours_before_due=data.get(
+            User_Col_Name.chore_reminder_hours_before_due.value,
+            24,
+        ),
     )
 
 
@@ -112,7 +124,11 @@ def create_UserResponse(data: dict) -> UserResponse:
         email=data[User_Col_Name.email.value],
         phone_num=data[User_Col_Name.phone.value],
         householdid=data[User_Col_Name.householdid.value],
-        profile_url=data[User_Col_Name.profile_url.value],
+        profile_url=data.get(User_Col_Name.profile_url.value),
+        chore_reminder_hours_before_due=data.get(
+            User_Col_Name.chore_reminder_hours_before_due.value,
+            24,
+        ),
     )
 
 
@@ -126,6 +142,9 @@ def create_UserInUpdate(data: dict) -> UserInUpdate:
         email=data[User_Col_Name.email.value],
         phone_num=data[User_Col_Name.phone.value],
         householdid=data[User_Col_Name.householdid.value],
+        chore_reminder_hours_before_due=data.get(
+            User_Col_Name.chore_reminder_hours_before_due.value
+        ),
     )
 
 
