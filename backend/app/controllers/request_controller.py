@@ -1,3 +1,7 @@
+"""
+Module for managing Request Controller operations.
+Contributors: Gilligan Berlinski
+"""
 from typing import Iterable
 import datetime as DT
 
@@ -10,12 +14,8 @@ from app.db.chore_repo import get_chore
 from app.notification import NotificationCreateRequest, NotificationType
 
 
-"""
-Module for managing Request Controller operations.
-Contributors: Gilligan Berlinski
-"""
-
 router = APIRouter(prefix="/requests", tags=["requests"])
+""" API router for chore request-related endpoints."""
 
 @router.get("", response_model=Iterable[RequestResponse])
 def get_my_pending_requests(
@@ -49,8 +49,8 @@ def create_chore_request(request: RequestCreateRequest, current_user: UserRespon
     """Create a chore request for a specified chore and assignee user.
 
     Raises:
-        HTTPException 400: If the request is invalid, assignee user is not in the same household as the requester, or the chore is not found.
-        HTTPException 404: If the requested assignee or chore is not found.
+    - HTTPException 400: If the request is invalid, assignee user is not in the same household as the requester, or the chore is not found.
+    - HTTPException 404: If the requested assignee or chore is not found.
     """
 
     requested_assignee = get_user(userid=request.requested_assignee_userid)
@@ -111,11 +111,12 @@ def accept_request(
     """Accept a chore request, updating the request status and chore assignee accordingly.
 
     Raises:
-        HTTPException 400: The request has already been responded to, or the requested chore is not found.
-        HTTPException 403: If the current user is not the requested assignee for the request.
-        HTTPException 404: If the request or requested chore is not found.
-        HTTPException 500: If updating the request status or chore assignee fails."""
-    
+    - HTTPException 400: The request has already been responded to, or the requested chore is not found.
+    - HTTPException 403: If the current user is not the requested assignee for the request.
+    - HTTPException 404: If the request or requested chore is not found.
+    - HTTPException 500: If updating the request status or chore assignee fails.
+    """
+
     request = get_request(requestid)
     chore = get_chore(choreid=request.requested_choreid)
 
@@ -201,10 +202,10 @@ def reject_request(
     """Rejects a chore request, updating the request status.
     
     Raises:
-        HTTPException 400: The request has already been responded to, or the requested chore is not found.
-        HTTPException 403: If the current user is not the requested assignee for the request.
-        HTTPException 404: If the request or requested chore is not found.
-        HTTPException 500: If updating the request status or chore assignee fails."""
+    - HTTPException 400: The request has already been responded to, or the requested chore is not found.
+    - HTTPException 403: If the current user is not the requested assignee for the request.
+    - HTTPException 404: If the request or requested chore is not found.
+    - HTTPException 500: If updating the request status or chore assignee fails."""
 
     request = get_request(requestid)
     chore = get_chore(choreid=request.requested_choreid)

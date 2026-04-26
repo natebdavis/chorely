@@ -1,5 +1,10 @@
-from typing import Union
+"""
+Module for managing Chore Controller operations.
+Handles HTTP requests related to Chores and exposes API endpoints
+for creating, retrieving, updating, and deleting chores.
 
+Contributers: Edmund Krajewski, Gilligan Berlinski
+"""
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 import datetime as DT
 
@@ -42,17 +47,7 @@ from app.chore_generation import (
 )
 
 router = APIRouter(prefix="/chores", tags=["chores"])
-
-
-"""
-Module for managing Chore Controller operations.
-Handles HTTP requests related to Chores and exposes API endpoints
-for creating, retrieving, updating, and deleting chores.
-
-Contributers: Edmund Krajewski, Gilligan Berlinski
-"""
-
-router = APIRouter(prefix="/chores", tags=["chores"])
+""" API router for chore-related endpoints. All routes defined in this module"""
 
 
 @router.patch("/edit/{choreid}", response_model=ChoreResponse)
@@ -63,6 +58,12 @@ def edit_chore_route(
 ):
     """
     Edit an existing chore's details (name, description, due date, priority, type, location).
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household, if the chore fields are invalid, or if the due date is in the past.
+    - HTTPException 403: If the user is not the requester of the chore.
+    - HTTPException 404: If the chore is not found or not in the user's household.
+    - HTTPException 500: If there is an error updating the chore.
     """
     try:
         chore = db_get_chore(choreid)
@@ -128,6 +129,13 @@ def update_chore_route(
 ):
     """
     Update a chore's status and/or assignee using PATCH semantics.
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household, if the status/assignee values are invalid,
+            if the status/assignee combination is invalid, or if the due date is in the past.
+    - HTTPException 404: If the chore is not found or not in the user's household,
+            or if the new assignee is not found.
+    - HTTPException 500: If there is an error updating the chore.
     """
     try:
         existing = db_get_chore(choreid)
@@ -290,6 +298,11 @@ def get_assigned_chores_range(
 
     This endpoint still generates household recurring chores for the range first,
     then filters the returned chores down to only those assigned to the user.
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household, or if the date formats are invalid, or if end_date is before start_date.
+    - HTTPException 404: If the user's household is not found.
+    - HTTPException 500: If there is an error retrieving the chores.
     """
     try:
         householdid = current_user.householdid
@@ -362,6 +375,11 @@ def get_household_chores_in_range(
     The response is optimized for mobile calendar/day caching and includes:
     - chores grouped by date
     - per-date calendar metadata such as overdue markers
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household, or if the date formats are invalid, or if end_date is before start_date.
+    - HTTPException 404: If the user's household is not found.
+    - HTTPException 500: If there is an error retrieving the chores.
     """
     try:
         householdid = current_user.householdid
@@ -425,6 +443,11 @@ def get_chore_route(
 ):
     """
     Retrieve a single chore by its ID.
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household.
+    - HTTPException 404: If the chore is not found or not in the user's household.
+    - HTTPException 500: If there is an error retrieving the chore.
     """
     try:
         chore = db_get_chore(choreid)
@@ -460,6 +483,11 @@ def get_household_chores(
     Retrieve all chores for the current user's household.
 
     Legacy endpoint retained for compatibility.
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household.
+    - HTTPException 404: If the user has not joined a household.
+    - HTTPException 500: If there is an error retrieving the chores.
     """
     try:
         householdid = current_user.householdid
@@ -487,6 +515,11 @@ def get_filtered_chores(
 ):
     """
     Retrieve chores for the current user's household filtered by various criteria.
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household, or if any of the filter values are invalid.
+    - HTTPException 404: If the user is not joined a household.
+    - HTTPException 500: If there is an error retrieving the chores.
     """
     try:
         householdid = current_user.householdid
@@ -553,6 +586,11 @@ def create_chore(
 ):
     """
     Create a new chore.
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household, if the chore fields are invalid, or if the due date is in the past.
+    - HTTPException 404: If the user is not joined to a household, or if the assignee (if provided) is not found.
+    - HTTPException 500: If there is an error creating the chore.
     """
     try:
         householdid = current_user.householdid
@@ -666,6 +704,11 @@ def delete_chore(
 ):
     """
     Delete a chore by chore ID.
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household, or if the chore ID is invalid.
+    - HTTPException 404: If the chore is not found or not in the user's household.
+    - HTTPException 500: If there is an error deleting the chore.
     """
     try:
         deleted = db_remove_chore(current_user.householdid, payload.choreid)

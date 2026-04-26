@@ -1,3 +1,8 @@
+"""
+Module for managing Chore Template Controller operations.
+
+Contributors: Edmund Krajewski
+"""
 from fastapi import APIRouter, HTTPException, status, Depends
 
 from app.database import (
@@ -20,13 +25,8 @@ from app.chore_template import (
 )
 from app.chore import Priority, Location, Type
 
-"""
-Module for managing Chore Template Controller operations.
-
-Contributors: Edmund Krajewski
-"""
-
 router = APIRouter(prefix="/chore-templates", tags=["chore-templates"])
+""" API router for chore template-related endpoints."""
 
 
 @router.post("", response_model=ChoreTemplateResponse, status_code=status.HTTP_201_CREATED)
@@ -36,6 +36,12 @@ def create_chore_template(
 ):
     """
     Create a new recurring chore template.
+
+    Raises:
+    - HTTPException 400: If the request is invalid, assignee user is not in
+        the same household as the requester, or the chore is not found.
+    - HTTPException 404: If the requested assignee or chore is not found.
+    - HTTPException 500: If creating the chore template fails.
     """
     try:
         householdid = current_user.householdid
@@ -138,6 +144,10 @@ def get_templates(
 ):
     """
     Get all recurring chore templates for the current household.
+
+    Raises:
+    - HTTPException 404: If the user is not part of a household.
+    - HTTPException 500: If retrieving the chore templates fails.
     """
     try:
         householdid = current_user.householdid
@@ -166,6 +176,11 @@ def get_template(
 ):
     """
     Get a single recurring chore template.
+
+    Raises:
+    - HTTPException 404: If the template is not found or the user is not part
+        of a household.
+    - HTTPException 500: If retrieving the chore template fails.
     """
     try:
         template = db_get_chore_template(templateid)
@@ -201,6 +216,11 @@ def update_template(
 ):
     """
     Update an existing recurring chore template.
+
+    Raises:
+    - HTTPException 404: If the template is not found or the user is not part
+        of a household.
+    - HTTPException 500: If updating the chore template fails.
     """
     try:
         existing = db_get_chore_template(templateid)
@@ -243,6 +263,11 @@ def deactivate_template(
 ):
     """
     Deactivate a recurring chore template.
+
+    Raises:
+    - HTTPException 404: If the template is not found or the user is not part
+        of a household.
+    - HTTPException 500: If deactivating the chore template fails.
     """
     try:
         existing = db_get_chore_template(templateid)

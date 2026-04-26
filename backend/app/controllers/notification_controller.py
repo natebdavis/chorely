@@ -1,3 +1,10 @@
+"""
+Module for managing Notification Controller operations.
+Handles HTTP requests related to Notifications and exposes API endpoints
+for creating, retrieving, updating, and deleting notifications.
+
+Contributors: Edmund Krajewski
+"""
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 
@@ -12,13 +19,8 @@ from app.database import (
 )
 from app.user import UserResponse
 
-"""
-Module for managing Notification Controller operations.
-Handles HTTP requests related to Notifications and exposes API endpoints
-for creating, retrieving, updating, and deleting notifications.
-"""
-
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+""" API router for notification-related endpoints."""
 
 
 @router.get("", response_model=List[NotificationResponse])
@@ -36,6 +38,10 @@ def get_notification(
 ):
     """
     Retrieve a single notification by notificationid.
+
+    Raises:
+    - HTTPException 403: If the current user is not the owner of the notification.
+    - HTTPException 404: If the notification is not found.
     """
     notification = db_get_notification(notificationid)
 
@@ -61,6 +67,10 @@ def create_notification(
 ):
     """
     Create a new notification.
+
+    Raises:
+    - HTTPException 500: If failed to create notification.
+
     """
     created = db_add_notification(payload)
 
@@ -80,6 +90,11 @@ def mark_notification_read(
 ):
     """
     Mark a notification as read.
+
+    Raises:
+    - HTTPException 404: If the notification is not found.
+    - HTTPException 403: If the current user is not the owner of the notification.
+    - HTTPException 500: If failed to mark the notification as read.
     """
     notification = db_get_notification(notificationid)
 
@@ -113,6 +128,11 @@ def delete_notification(
 ):
     """
     Delete a notification by notificationid.
+
+    Raises:
+    - HTTPException 404: If the notification is not found.
+    - HTTPException 403: If the current user is not the owner of the notification.
+    - HTTPException 500: If failed to delete the notification.
     """
     notification = db_get_notification(notificationid)
 

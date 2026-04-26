@@ -1,9 +1,3 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-
-from app.database import authenticate_user
-from app.utils import Token, create_access_token
-
 """
 Module for managing Authentication Controller operations.
 Handles HTTP requests related to user authentication and exposes
@@ -12,7 +6,14 @@ API endpoints for logging users into the system.
 Contributors: Edmund Krajewski, Gilligan Berlinski
 """
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+
+from app.database import authenticate_user
+from app.utils import Token, create_access_token
+
 router = APIRouter(prefix="/auth", tags=["auth"])
+""" API router for authentication-related endpoints. All routes defined in this module"""
 
 
 @router.post("/login", response_model=Token)
