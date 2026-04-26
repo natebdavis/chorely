@@ -1,31 +1,36 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-from app.controllers.chore_controller import router as chore_router
+
 from app.controllers.auth_controller import router as auth_router
-from app.controllers.user_controller import router as user_router
+from app.controllers.chore_controller import router as chore_router
 from app.controllers.household_controller import router as household_router
+from app.controllers.invite_controller import router as invite_router
 from app.controllers.notification_controller import router as notification_router
+from app.controllers.user_controller import router as user_router
+from app.controllers.request_controller import router as request_router
+from app.controllers.chore_template_controller import router as chore_template_router
+from app.controllers.leaderboard_controller import router as leaderboard_router
 
 app = FastAPI()
 
-# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # limit to frontend URL in prod
+    allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(chore_router)
 app.include_router(auth_router)
-app.include_router(user_router)
+app.include_router(chore_router)
 app.include_router(household_router)
+app.include_router(invite_router)
 app.include_router(notification_router)
-
+app.include_router(user_router)
+app.include_router(request_router)
+app.include_router(chore_template_router)
+app.include_router(leaderboard_router)
 
 @app.get("/")
 def root():
     return {"message": "Beta Release Version -Backend running"}
-
-

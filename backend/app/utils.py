@@ -1,22 +1,42 @@
-from abc import ABC, abstractmethod
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+from jose import jwt
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import pathlib
 import os
 from pydantic import BaseModel
 from fastapi.security import OAuth2PasswordBearer
-
-class CreateFromDict(ABC): 
-    '''Interface used for data classes that can be created using a dictionary.'''
-    
-    @abstractmethod
-    def from_dict(self):
-        pass
+from fastapi import HTTPException, status
+from enum import Enum
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+BUCKET = "images"
+
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif"
+}
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+
+class DateFilter(str, Enum):
+    TODAY = "today"
+    WEEK = "week"
+    MONTH = "month"
+
+
+class Weekday(int, Enum):
+    SUNDAY = 6
+    MONDAY = 0
+    TUESDAY = 1
+    WEDNESDAY = 2
+    THURSDAY = 3
+    FRIDAY = 4
+    SATURDAY = 5
 
 def load_env_variables():
     """Loads environment variables from the .env file.
@@ -68,5 +88,9 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Model for data contained in JWT token."""
     username: str | None = None
+
+credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},)
 
 

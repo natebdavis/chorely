@@ -1,86 +1,147 @@
-from collections.abc import Iterable
-import datetime as DT
-from typing import Optional, TYPE_CHECKING
 from enum import Enum, auto
-import pytz
 from pydantic import BaseModel, Field
+from typing import Union
+from datetime import datetime
 
-from app.utils import CreateFromDict
-
-if TYPE_CHECKING:
-    from app.user import User
+from app.user import UserResponse, get_full_name
 
 """
 Module for managing Chore operations.
-Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
+Contributers: Gilligan Berlinski, Edmund Krajewski, Nathaniel Davis
 """
 
-class ChoreCreateRequest(BaseModel):
+CHORE_TABLE_NAME = "chores"
+
+
+class ChoreEditRequest(BaseModel):
     """
-    Request body schema for creating a new Chore.
-
-    Inputs:
-        name: Name of the Chore.
-        description: Description of the Chore.
-        due_date: Datetime string representing when the Chore is due.
-        assignee_id: Optional unique identifier of the User assigned to the Chore.
-
-    Output:
-        JSON body representing a Chore creation request.
+    Request body schema for editing an existing chore from the frontend.
     """
+    name: Union[str, None] = None
+    description: Union[str, None] = None
+    due_date: Union[str, None] = None
+    priority: Union[str, None] = None
+    location: Union[str, None] = None
+    ctype: Union[str, None] = None
 
+
+class ChoreCreateInput(BaseModel):
+    """
+    Request body schema for creating a new chore from the frontend.
+    """
     name: str = Field(..., min_length=1, max_length=50)
     description: str = Field(..., min_length=1, max_length=3000)
     due_date: str
-    assignee_id: Optional[int] = None
+    assignee_id: Union[int, None] = None
+    priority: Union[str, None] = None
+    ctype: Union[str, None] = None
+    location: Union[str, None] = None
+
+
+class ChoreCreateRequest(BaseModel):
+    """
+    Internal request schema used by the backend/database layer
+    when creating a new chore.
+    """
+    householdid: int
+    name: str = Field(..., min_length=1, max_length=50)
+    description: str = Field(..., min_length=1, max_length=3000)
+    request_date: str
+    due_date: str
+    requester_id: int
+    assignee_id: Union[int, None] = None
+    template_id: Union[int, None] = None
+    status: str
+    ctype: Union[str, None] = None
+    priority: Union[str, None] = None
+    location: Union[str, None] = None
+
 
 class ChoreUpdateRequest(BaseModel):
     """
     Request body schema for updating a Chore.
-
-    Inputs:
-        status: Optional new status of the Chore.
-        assignee_id: Optional new assignee user ID. Use null to unassign.
-
-    Output:
-        JSON body representing a Chore update request.
     """
-    status: Optional[str] = None
-    assignee_id: Optional[int] = None
+    status: Union[str, None] = None
+    assignee_id: Union[int, None] = None
+    priority: Union[str, None] = None
+    location: Union[str, None] = None
+    ctype: Union[str, None] = None
+
 
 class ChoreDeleteRequest(BaseModel):
     """
     Request body schema for deleting a Chore.
-
-    Inputs:
-        choreid: Unique identifier of the Chore to delete.
-
-    Output:
-        JSON body representing a Chore deletion request.
     """
     choreid: int
+
+
+class ChoreRangeQuery(BaseModel):
+    """
+    Query schema for fetching chores in a date range.
+    """
+    start_date: str
+    end_date: str
 
 
 class ChoreResponse(BaseModel):
     """
     Response schema returned for Chore-related API requests.
-
-    Outputs:
-        choreid: Unique identifier of the Chore.
-        name: Name of the Chore.
-        description: Description of the Chore.
-        request_date: Unix timestamp representing when the Chore was requested.
-        due_date: Unix timestamp representing when the Chore is due.
-        assignee: Full name of the assignee, or null if unassigned.
-        status: Current status of the Chore.
     """
-    choreid: Optional[int] = None
+    householdid: int
+    choreid: int
     name: str
     description: str
-    request_date: Optional[int] = None
-    due_date: Optional[int] = None
-    assignee: Optional[str] = None
-    status: Optional[str] = None
+    request_date: Union[str, None] = None
+    due_date: Union[str, None] = None
+    requester_id: Union[int, None] = None
+    assignee_id: Union[int, None] = None
+    template_id: Union[int, None] = None
+    assignee: Union[str, None] = None
+    status: Union[str, None] = None
+    ctype: Union[str, None] = None
+    priority: Union[str, None] = None
+    location: Union[str, None] = None
+
+class ChoreSearchRequest(BaseModel):
+    """
+    Request body schema for searching/filtering Chores.
+    """
+    status: Union[str, None] = None
+    priority: Union[str, None] = None
+    location: Union[str, None] = None
+    ctype: Union[str, None] = None
+    date_filter: Union[str, None] = None   # "TODAY" | "WEEK" | "MONTH"
+    weekday: Union[int, None] = None       # 0=Mon ... 6=Sun
+
+
+class CalendarDateMetaResponse(BaseModel):
+    """
+    Summary metadata for a calendar date.
+
+    Used by the frontend to decorate dates in the calendar view
+    without having to recalculate business logic client-side.
+    """
+    has_chores: bool = False
+    has_incomplete: bool = False
+    has_overdue: bool = False
+    has_assigned_to_me: bool = False
+    has_high_priority: bool = False
+    chore_count: int = 0
+
+
+class ChoreRangeResponse(BaseModel):
+    """
+    Range-based response for cached calendar/day views.
+
+    chores_by_date:
+        Maps YYYY-MM-DD -> list of chores due on that date
+
+    calendar_meta:
+        Maps YYYY-MM-DD -> summary flags used to decorate the calendar UI
+    """
+    chores_by_date: dict[str, list[ChoreResponse]]
+    calendar_meta: dict[str, CalendarDateMetaResponse]
+
 
 class Chore_Col_Name(Enum):
     """Column names for Chore database table."""
@@ -91,8 +152,12 @@ class Chore_Col_Name(Enum):
     due_date = "due_date"
     requester = "request_user"
     assignee = "assigned_user"
+    template_id = "template_id"
     status = "cstatus"
     householdid = "householdid"
+    priority = "priority"
+    location = "location"
+    ctype = "ctype"
 
 
 class Status(Enum):
@@ -103,133 +168,119 @@ class Status(Enum):
     CANCELLED = auto()
 
 
-class Notification:
-    """Notification for a Chore."""
-    time: DT.datetime
+class Location(Enum):
+    """Location of Chore."""
+    KITCHEN = auto()
+    LIVING_ROOM = auto()
+    BATHROOM = auto()
+    BEDROOM = auto()
+    OUTSIDE = auto()
+    SHARED = auto()
+    STORE = auto()
 
-    def __init__(self, time: DT.datetime):
-        """Constructor for Notification"""
-        self.time = time
+
+class Type(Enum):
+    """Type of Chore."""
+    CLEANING = auto()
+    COOKING = auto()
+    SHOPPING = auto()
+    LAUNDRY = auto()
+    MAINTENANCE = auto()
+    PET = auto()
+    ADMINSTRATIVE = auto()
+    ORGANIZING = auto()
+    OTHER = auto()
 
 
-class Chore(CreateFromDict):
-    """Chore Object representing a chore in the system."""
-    choreid: Optional[int]
-    name: str
-    description: str
-    request_date: DT.datetime
-    due_date: DT.datetime
-    requester: "User"
-    notifications: Iterable[Notification]
-    householdid: int
+class Priority(Enum):
+    """Priority of Chore."""
+    LOW = auto()
+    MEDIUM = auto()
+    HIGH = auto()
 
-    def __init__(
-        self,
-        name: str,
-        description: str,
-        due_date: DT.datetime,
-        requester: "User",
-        choreid: Optional[int] = None,
-        assignee: Optional["User"] = None,
-        request_date: Optional[DT.datetime] = None,
-        status: Optional[Status] = None,
-        householdid: Optional[int] = None
-    ):
-        """
-        Constructor for Chore Class.
 
-        Inputs:
-            assignee can be initially null or assigned on creation.
-            request_date will be auto-generated on creation if not given.
-            status will be set to UNASSIGNED if assignee is null or
-            IN_PROGRESS if a User is assigned to the chore unless explicitly given.
+def create_ChoreCreateRequest(data: dict) -> ChoreCreateRequest:
+    status = Status.IN_PROGRESS.name if data[Chore_Col_Name.assignee.value] else Status.UNASSIGNED.name
 
-        Output:
-            Chore object
-        """
-        self.choreid = choreid
-        self.name = name
-        self.description = description
-        self.request_date = request_date if request_date else DT.datetime.now(pytz.utc)
-        self.due_date = due_date
-        self.requester = requester
-        self._assignee = assignee
-        self.householdid = householdid
+    return ChoreCreateRequest(
+        householdid=data[Chore_Col_Name.householdid.value],
+        name=data[Chore_Col_Name.cname.value],
+        description=data[Chore_Col_Name.description.value],
+        request_date=datetime.now().isoformat(),
+        due_date=data[Chore_Col_Name.due_date.value],
+        requester_id=data[Chore_Col_Name.requester.value],
+        assignee_id=data[Chore_Col_Name.assignee.value],
+        template_id=data.get(Chore_Col_Name.template_id.value),
+        status=status,
+        priority=data[Chore_Col_Name.priority.value],
+        ctype=data[Chore_Col_Name.ctype.value],
+        location=data[Chore_Col_Name.location.value],
+    )
 
-        if status is not None:
-            self._status = status
-        else:
-            self._status = Status.IN_PROGRESS if self._assignee else Status.UNASSIGNED
 
-        self.notifications = set()
+def create_ChoreUpdateRequest(data: dict) -> ChoreUpdateRequest:
+    status = data[Chore_Col_Name.status.value]
+    assignee = data[Chore_Col_Name.assignee.value]
+    priotity = data[Chore_Col_Name.priority.value]
 
-    @classmethod
-    def from_dict(cls, chore_dict: dict):
-        """Alternate constructor for Chore from a dictionary."""
-        name = chore_dict[Chore_Col_Name.cname.value]
-        choreid = chore_dict[Chore_Col_Name.choreid.value]
-        description = chore_dict[Chore_Col_Name.description.value]
-        request_date = DT.datetime.fromisoformat(
-            chore_dict[Chore_Col_Name.request_date.value]
-        )
-        due_date = DT.datetime.fromisoformat(
-            chore_dict[Chore_Col_Name.due_date.value]
-        )
-        requester = chore_dict[Chore_Col_Name.requester.value]
-        assignee = chore_dict[Chore_Col_Name.assignee.value]
-        status = Status[chore_dict[Chore_Col_Name.status.value]]
-        householdid = chore_dict[Chore_Col_Name.householdid.value]
-
-        return cls(
-            name=name,
-            description=description,
-            due_date=due_date,
-            requester=requester,
-            choreid=choreid,
-            assignee=assignee,
-            request_date=request_date,
+    if is_valid_status(status=status, assignee=assignee):
+        return ChoreUpdateRequest(
             status=status,
-            householdid=householdid
+            assignee_id=assignee,
+            priority=priotity
         )
 
-    @property
-    def status(self) -> Status:
-        return self._status
+    return None
 
-    @status.setter
-    def status(self, status: Status):
-        self._status = status
 
-    @property
-    def assignee(self) -> Optional["User"]:
-        """User that is tasked with completing the Chore."""
-        return self._assignee
+def create_ChoreDeleteRequest(data: dict) -> ChoreDeleteRequest:
+    return ChoreDeleteRequest(
+        choreid=data[Chore_Col_Name.choreid.value]
+    )
 
-    @assignee.setter
-    def assignee(self, assignee: Optional["User"]):
-        """
-        If assignee was null and gets a user, set status to IN_PROGRESS.
-        If assignee becomes null, set status to UNASSIGNED.
-        """
-        if not self._assignee and assignee:
-            self.status = Status.IN_PROGRESS
-        elif self._assignee and not assignee:
-            self.status = Status.UNASSIGNED
-        self._assignee = assignee
 
-    def createBaseModel(self) -> dict:
-        """
-        Create a dictionary representation of a Chore suitable for API responses.
-        """
-        assignee = None if not self.assignee else f"{self.assignee.fname} {self.assignee.lname}"
+def create_ChoreEditRequest(data: dict) -> ChoreEditRequest:
+    return ChoreEditRequest(
+        name=data[Chore_Col_Name.cname.value],
+        description=data[Chore_Col_Name.description.value],
+        due_date=data[Chore_Col_Name.due_date.value],
+        priority=data[Chore_Col_Name.priority.value],
+        location=data[Chore_Col_Name.location.value],
+        ctype=data[Chore_Col_Name.ctype.value]
+    )
 
-        return {
-            "choreid": self.choreid,
-            "name": self.name,
-            "description": self.description,
-            "request_date": int(self.request_date.timestamp()) if self.request_date else None,
-            "due_date": int(self.due_date.timestamp()) if self.due_date else None,
-            "assignee": assignee,
-            "status": self.status.name if self.status else None,
-            "householdid": self.householdid
-        }
+
+def create_ChoreResponse(data: dict, assignee: Union[UserResponse, None] = None) -> ChoreResponse:
+    assignee_name = get_full_name(assignee) if assignee else None
+
+    return ChoreResponse(
+        householdid=data[Chore_Col_Name.householdid.value],
+        choreid=data[Chore_Col_Name.choreid.value],
+        name=data[Chore_Col_Name.cname.value],
+        description=data[Chore_Col_Name.description.value],
+        request_date=data[Chore_Col_Name.request_date.value],
+        due_date=data[Chore_Col_Name.due_date.value],
+        requester_id=data[Chore_Col_Name.requester.value],
+        assignee_id=data[Chore_Col_Name.assignee.value],
+        template_id=data.get(Chore_Col_Name.template_id.value),
+        assignee=assignee_name,
+        status=data[Chore_Col_Name.status.value],
+        priority=data[Chore_Col_Name.priority.value],
+        ctype=data[Chore_Col_Name.ctype.value],
+        location=data[Chore_Col_Name.location.value],
+    )
+
+
+def is_valid_status(status: str, assignee: Union[int, None] = None) -> bool:
+    status = status.upper()
+
+    if status not in Status.__members__:
+        raise ValueError("Not a valid Status Type.")
+
+    if assignee and status == Status.UNASSIGNED.name:
+        raise ValueError("Cannot be given status UNASSIGNED if assignee exists.")
+
+    if not assignee and status == Status.IN_PROGRESS.name:
+        raise ValueError("Cannot be given status IN_PROGRESS if assignee does not exist.")
+
+    return True

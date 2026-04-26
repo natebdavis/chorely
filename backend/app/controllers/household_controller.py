@@ -1,183 +1,407 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List
-
-from app.household import HouseholdResponse
-from app.database import get_household_member_count, get_current_user, get_householdid, join_household, create_household_db, get_users
-from app.user import UserResponse
-
-from app.database import join_household, leave_household, get_user, get_householdid, get_current_user, get_household_member_count
-from app.household import HouseholdJoinRequest, HouseholdLeaveRequest
-
 """
 Module for managing Household Controller operations.
-Handles HTTP requests related to Households and exposes API endpoints
-for creating and retrieving household information.
+Handles HTTP requests related to households and exposes API endpoints
+for retrieving household information, creating households, inviting users to households, leaving households, removing members from households, and transferring household ownership.
 
 Contributors: Edmund Krajewski, Gilligan Berlinski
 """
+from fastapi import APIRouter, HTTPException, Depends
+from typing import List
+import datetime as DT
+
+from app.household import (
+    HouseholdRemoveMemberRequest,
+    HouseholdResponse,
+    HouseholdInviteRequest,
+    HouseholdTransferOwnershipRequest,
+)
+from app.invite import InviteCreateRequest, InviteStatus
+from app.notification import NotificationCreateRequest, NotificationType
+from app.db.notification_repo import create_notification
+from app.database import (
+    get_household_member_count,
+    get_current_user,
+    get_householdid,
+    join_household,
+    create_household_db,
+    get_users,
+    leave_household,
+    get_user,
+    create_invite,
+    get_pending_invite_for_household_user,
+    get_owner_householdid,
+    transfer_household_ownership,
+    delete_household_if_empty
+)
+from app.user import UserResponse, get_full_name
 
 router = APIRouter(tags=["households"], prefix="/households")
+""" API router for household-related endpoints."""
+
 
 @router.get("/members", response_model=List[UserResponse])
 def get_household_users(current_user: UserResponse = Depends(get_current_user)):
     """
-    Retrieve all Users belonging to a household.
-
-    Inputs:
-        householdid: Identifier of the household.
-
-    Outputs:
-        List of UserResponse objects.
-
+    Get all users in the current user's household.
+    
     Raises:
-        HTTPException(404) if no users exist for that household or if the household does not exist.
+    - HTTPException 404: If the user is not part of a household or no users are found in the household.
     """
+    householdid = current_user.householdid
 
-    userid = current_user["userid"]
-    householdid = current_user["householdid"]
-
-    if not householdid:
-        raise HTTPException(status_code=404, detail="User has not joined a household")
+    if householdid is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User has not joined a household",
+        )
 
     users = get_users(householdid)
 
     if not users:
-        raise HTTPException(status_code=404, detail="No users in household found")
-
-    return [
-        UserResponse(
-            userid=u.userid,
-            username=u.username,
-            fname=u.fname,
-            lname=u.lname,
-            email=u.email,
-            phone_num=u.phone_num,
+        raise HTTPException(
+            status_code=404,
+            detail="No users in household found",
         )
-        for u in users
-    ]
+
+    return list(users)
+
 
 @router.get("", response_model=HouseholdResponse)
-def get_households(current_user: UserResponse = Depends(get_current_user)):
+def get_household(current_user: UserResponse = Depends(get_current_user)):
     """
-    Retrieve household information for the current user.
+    Get the current user's household information, including householdid and member count.
 
-    Inputs:
-        current_user: The currently authenticated user.
+     Raises:
+     - HTTPException 404: If the user is not part of a household.
+     """
+    householdid = current_user.householdid
 
-    Outputs:
-        HouseholdResponse object containing household information.
-    
-    Raises:
-        HTTPException(404) if the user has not joined a household.
-    """
+    if householdid is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User has not joined a household",
+        )
 
-    userid = current_user["userid"]
-    householdid = get_householdid(userid=userid)
-
-    if not householdid:
-        raise HTTPException(status_code=404, detail="User has not joined a household")
-    
     return HouseholdResponse(
         householdid=householdid,
         member_count=get_household_member_count(householdid),
     )
 
+
 @router.post("", response_model=HouseholdResponse)
 def create_household(current_user: UserResponse = Depends(get_current_user)):
-    """
-    Create a new household and add the current user as a member.
+    """ Create a new household and add the current user as the owner.
 
-    Inputs:
-        current_user: The currently authenticated user.
+     Raises:
+     - HTTPException 400: If the user is already part of a household.
+     - HTTPException 500: If failed to create household or add user to household.
+     """
+    householdid = get_householdid(current_user.userid)
 
-    Outputs:
-        HouseholdResponse object containing the new household information.
-
-    Raises:
-        HTTPException(404) if the user is already a member of an existing household.
-    """
-
-    householdid = get_householdid(current_user["userid"])
-
-    if householdid:
-        raise HTTPException(status_code=404, detail="User is already apart of an existing household.")
+    if householdid is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="User is already apart of an existing household.",
+        )
 
     new_household = create_household_db()
-    householdid = new_household[0]["householdid"]
-    join_household(current_user["userid"], householdid)
+
+    if not new_household:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create household",
+        )
+
+    joined_user = join_household(userid=current_user.userid, householdid=new_household.householdid, is_owner=True)
+
+    if not joined_user:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to add user to newly created household",
+        )
 
     return HouseholdResponse(
-        householdid=householdid,
+        householdid=new_household.householdid,
         member_count=1,
     )
 
-@router.post("/join")
-def create_membership(request: HouseholdJoinRequest, current_user: UserResponse = Depends(get_current_user)):
-    """
-    Allow a user to add a user to their household.
 
-    Inputs:
-        request: HouseholdJoinRequest containing the userid of the user being added and the householdid of the household they are being added to.
+def _send_household_invite(
+    request: HouseholdInviteRequest,
+    current_user: UserResponse,
+):
+    current_householdid = get_householdid(userid=current_user.userid)
 
-    Outputs:
-        A success message indicating the user was added to the household.
+    if current_householdid is None:
+        raise HTTPException(
+            status_code=400,
+            detail="User must be in a household to invite others",
+        )
 
-    Raises:
-        HTTPException(400) if the user is not a member of the household they are trying to add another user to, if the user being added is already a member of the household, or if the user being added is already a member of another household.
-        HTTPException(404) if the user being added does not exist.
-    """
-    
-    current_userid = current_user["userid"]
-    current_householdid = get_householdid(userid=current_userid)
-
-    if not current_householdid:
-        raise HTTPException(status_code=400, detail="User must be a member of the household to add another user to it.")
+    if current_user.userid == request.userid:
+        raise HTTPException(
+            status_code=400,
+            detail="User cannot invite themselves",
+        )
 
     member_count = get_household_member_count(current_householdid)
-    if member_count >= 10:  # Assuming a maximum of 10 members per household
-        raise HTTPException(status_code=400, detail="Household has reached maximum member limit")
+    if member_count >= 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Household has reached maximum member limit",
+        )
 
-    user = get_user(request.userid)
+    user = get_user(userid=request.userid)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
 
     if user.householdid == current_householdid:
-        raise HTTPException(status_code=400, detail="User already belongs to this household")
-    
-    if user.householdid is not None:
-        raise HTTPException(status_code=400, detail="User already belongs to a different household")
+        raise HTTPException(
+            status_code=400,
+            detail="User already in this household",
+        )
 
-    join_household(request.userid, current_householdid)
-    return {"message": "User joined household successfully"}
+    if user.householdid is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="User already belongs to another household",
+        )
+
+    existing_invite = get_pending_invite_for_household_user(
+        householdid=current_householdid,
+        invitee_userid=request.userid,
+    )
+
+    if existing_invite:
+        raise HTTPException(
+            status_code=409,
+            detail="A pending invite already exists for this user and household",
+        )
+
+    now = DT.datetime.now().isoformat()
+
+    invite_payload = InviteCreateRequest(
+        householdid=current_householdid,
+        inviter_userid=current_user.userid,
+        invitee_userid=request.userid,
+        status=InviteStatus.PENDING.value,
+        created_at=now,
+    )
+
+    created_invite = create_invite(invite_payload)
+
+    if not created_invite:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create invite",
+        )
+
+    created_notification = create_notification(
+        NotificationCreateRequest(
+            userid=request.userid,
+            type=NotificationType.INVITE.value,
+            title="Household Invite",
+            message=f"{get_full_name(current_user)} invited you to join household {current_householdid}",
+            reference_id=created_invite.inviteid,
+            time=now,
+            is_read=False,
+        )
+    )
+
+    if not created_notification:
+        raise HTTPException(
+            status_code=500,
+            detail="Invite created but notification failed",
+        )
+
+    return {
+        "message": "Invite sent successfully",
+        "inviteid": created_invite.inviteid,
+    }
+
+
+@router.post("/invite")
+def invite_to_household(
+    request: HouseholdInviteRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """ Invite a user to the current user's household.
+    
+    Raises:
+    - HTTPException 400: If the user is not part of a household or the invite is invalid.
+    - HTTPException 404: If the user to invite is not found.
+    - HTTPException 409: If a pending invite already exists for this user and household.
+    - HTTPException 500: If failed to create invite or notification.
+    """
+    return _send_household_invite(request, current_user)
+
+
+@router.post("/join")
+def join_household_route(
+    request: HouseholdInviteRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """ 
+    Join a household using an invite.
+
+    Raises:
+    - HTTPException 400: If the user is already part of a household or the invite is invalid.
+    - HTTPException 404: If the user to invite is not found.
+    - HTTPException 409: If a pending invite already exists for this user and household.
+    - HTTPException 500: If failed to create invite or notification.
+    """
+    return _send_household_invite(request, current_user)
 
 
 @router.delete("/leave")
-def delete_membership(request: HouseholdLeaveRequest, current_user: UserResponse = Depends(get_current_user)):
+def leave_household_route(
+    current_user: UserResponse = Depends(get_current_user),
+):
     """
-    Allow a user to leave their current household.
+    Leave the current user's household.
 
-    Inputs:
-        request: HouseholdLeaveRequest containing the userid of the user leaving the household.
-        
-    Outputs:        
-        A success message indicating the user has left the household.
-        
     Raises:
-        HTTPException(400) if the user is not a member of any household or if the user is attempting to remove another user from a household.
-        HTTPException(404) if the user does not exist.
-    """
+     - HTTPException 400: If the user is not part of a household.
+     - HTTPException 500: If failed to leave household.
+     """
+    user = get_user(userid=current_user.userid)
 
-    current_userid = current_user["userid"]
-
-    if current_userid != request.userid:
-        raise HTTPException(status_code=400, detail="Unauthorized user attempting to remove another user from household.")
-
-    user = get_user(request.userid)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
 
     if user.householdid is None:
-        raise HTTPException(status_code=400, detail="User is not part of a household")
+        raise HTTPException(
+            status_code=400,
+            detail="User is not part of a household",
+        )
+    
+    user_owned_householdid = get_owner_householdid(current_user.userid)
+    owner_leaving = False
 
-    leave_household(request.userid)
+    if user_owned_householdid:
+        member_count = get_household_member_count(current_user.householdid)
+        if member_count > 1 and user_owned_householdid == current_user.householdid:
+            raise HTTPException(
+                status_code=403,
+                detail="Household owner can not leave household of two or more members without transferring ownership.",
+            )
+        owner_leaving = True
+
+    left_user = leave_household(current_user.userid)
+
+    if not left_user:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to leave household",
+        )
+    
+    if owner_leaving:
+        delete_household_if_empty(user_owned_householdid)
+    
     return {"message": "User left household successfully"}
+
+@router.delete("/remove")
+def remove_member_from_household_route(
+    request: HouseholdRemoveMemberRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Remove a member from the current user's household. Only the household owner can remove members other than themselves.
+
+    Raises:
+    - HTTPException 400: If the user is not part of a household, the request is invalid, or the user tries to remove themselves.
+    - HTTPException 403: If the current user is not the household owner or tries to remove a user that is not in their household.
+    - HTTPException 404: If the user to remove is not found.
+    - HTTPException 500: If failed to remove user from household.
+    """
+    if request.userid == current_user.userid:
+        raise HTTPException(
+            status_code=400,
+            detail="User cannot remove themselves from the household, must leave instead.",
+        )
+
+    householdid = current_user.householdid
+
+    if householdid is None:
+        raise HTTPException(
+            status_code=400,
+            detail="User is not part of a household",
+        )
+    
+    user_owned_householdid = get_owner_householdid(current_user.userid)
+
+    if user_owned_householdid is None or user_owned_householdid != householdid:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the household owner can remove members",
+        )
+
+    householdid_request = get_householdid(request.userid)
+
+    if householdid_request is None or householdid_request != householdid:
+        raise HTTPException(
+            status_code=403,
+            detail="User is not a member of your household",
+        )
+    
+    removed_user = leave_household(request.userid)
+
+    if not removed_user:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to remove user from household",
+        )
+    
+    return {"message": "User removed from household successfully"}
+
+@router.patch("/transfer-ownership")
+def transfer_household_ownership_route(
+    request: HouseholdTransferOwnershipRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Transfer household ownership to another member of the household.
+    
+    Raises:
+    - HTTPException 400: If the user is not part of a household, the request is invalid, or the user tries to transfer ownership to themselves.
+    - HTTPException 403: If the current user is not the household owner or tries to transfer ownership to a user that is not in their household.
+    - HTTPException 404: If the new owner user is not found.
+    - HTTPException 500: If failed to transfer household ownership.
+    """
+    if request.new_owner_userid == current_user.userid:
+        raise HTTPException(
+            status_code=400,
+            detail="User cannot transfer ownership to themselves",
+        )
+
+    householdid = current_user.householdid
+
+    if householdid is None:
+        raise HTTPException(
+            status_code=400,
+            detail="User is not part of a household",
+        )
+
+    user_owned_householdid = get_owner_householdid(current_user.userid)
+
+    if user_owned_householdid is None or user_owned_householdid != householdid:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the household owner can transfer ownership",
+        )
+
+    success = transfer_household_ownership(householdid, request.new_owner_userid)
+
+    if not success:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to transfer household ownership",
+        )
+
+    return {"message": "Household ownership transferred successfully"}
