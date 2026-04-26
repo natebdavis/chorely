@@ -49,6 +49,9 @@ def search_users(
         if user.householdid == current_user.householdid:
             continue
 
+        if user.householdid is not None:
+           continue
+
         if (
             query in user.username.lower()
         ):
