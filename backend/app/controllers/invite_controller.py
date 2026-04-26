@@ -1,3 +1,10 @@
+"""
+Module for managing Invite Controller operations.
+Handles HTTP requests related to household invites and exposes API endpoints
+for retrieving, accepting, declining, and canceling invites.
+
+Contributors: Edmund Krajewski
+"""
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
 import datetime as DT
@@ -27,6 +34,9 @@ router = APIRouter(prefix="/invites", tags=["invites"])
 def get_my_pending_invites(
     current_user: UserResponse = Depends(get_current_user),
 ):
+    """
+    Retrieve all pending invites for the current user.
+    """
     return list(get_user_pending_invites(current_user.userid))
 
 
@@ -34,6 +44,9 @@ def get_my_pending_invites(
 def get_my_outgoing_pending_invites(
     current_user: UserResponse = Depends(get_current_user),
 ):
+    """
+    Retrieve all outgoing pending invites for the current user.
+    """
     return list(get_outgoing_pending_invites(current_user.userid))
 
 
@@ -49,6 +62,16 @@ def accept_invite(
     inviteid: int,
     current_user: UserResponse = Depends(get_current_user),
 ):
+    """
+     Accept a household invite.
+     This will add the user to the household, update the invite status to accepted, and cancel any other pending invites for the user.
+     
+     Raises:
+     - HTTPException 400: If the invite is no longer pending, user already belongs to a household, or household has reached maximum member limit.
+     - HTTPException 403: If the current user is not the invitee.
+     - HTTPException 404: If the invite or household is not found.
+     - HTTPException 500: If failed to join household or update invite status.
+     """
     invite = get_invite(inviteid)
 
     if not invite:
@@ -140,6 +163,15 @@ def decline_invite(
     inviteid: int,
     current_user: UserResponse = Depends(get_current_user),
 ):
+    """
+    Decline a household invite.
+    
+    Raises:
+    - HTTPException 400: If the invite is no longer pending.
+    - HTTPException 403: If the current user is not the invitee.
+    - HTTPException 404: If the invite is not found.
+    - HTTPException 500: If failed to update invite status.
+    """
     invite = get_invite(inviteid)
 
     if not invite:
@@ -196,6 +228,14 @@ def cancel_invite(
     inviteid: int,
     current_user: UserResponse = Depends(get_current_user),
 ):
+    """Cancel a household invite.
+    
+    Raises:
+    - HTTPException 400: If the invite is no longer pending.
+    - HTTPException 403: If the current user is not the inviter.
+    - HTTPException 404: If the invite is not found.
+    - HTTPException 500: If failed to cancel invite.
+    """
     invite = get_invite(inviteid)
 
     if not invite:
