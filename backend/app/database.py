@@ -19,6 +19,7 @@ from app.db.user_repo import (
     upload_profile_pic,
     get_profile_pic_url,
     delete_profile_pic,
+    update_chore_reminder_hours_before_due,
 )
 
 from app.db.chore_repo import (
@@ -107,6 +108,7 @@ __all__ = [
     "upload_profile_pic",
     "get_profile_pic_url",
     "delete_profile_pic",
+    "update_chore_reminder_hours_before_due",
 
     # chores
     "add_chore",

@@ -1,5 +1,5 @@
-from typing import Optional, List
 from supabase import Client
+from typing import Optional, List
 
 from app.db.client import get_client
 from app.notification import (
@@ -99,6 +99,28 @@ def remove_notification(notificationid: int, client: Optional[Client] = None) ->
         client.table("notifications")
         .delete()
         .eq("notid", notificationid)
+        .execute()
+    )
+
+    return bool(response.data)
+
+
+def notification_exists(
+    userid: int,
+    reference_id: int,
+    notification_type: str,
+    client: Optional[Client] = None,
+) -> bool:
+    if client is None:
+        client = get_client()
+
+    response = (
+        client.table("notifications")
+        .select("notid")
+        .eq("userid", userid)
+        .eq("reference_id", reference_id)
+        .eq("type", notification_type)
+        .limit(1)
         .execute()
     )
 

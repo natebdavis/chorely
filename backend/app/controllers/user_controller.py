@@ -23,8 +23,15 @@ from app.database import (
     upload_profile_pic,
     get_profile_pic_url,
     delete_profile_pic,
+    update_chore_reminder_hours_before_due,
 )
-from app.user import UserProfilePicResponse, UserResponse, UserCreateRequest, UserPasswordUpdateRequest
+from app.user import (
+    UserProfilePicResponse,
+    UserResponse,
+    UserCreateRequest,
+    UserPasswordUpdateRequest,
+    UserReminderSettingsUpdateRequest,
+)
 from app.utils import get_password_hash, ALLOWED_IMAGE_TYPES, ALLOWED_EXTENSIONS, MAX_FILE_SIZE
 
 router = APIRouter(tags=["users"], prefix="/user")
@@ -121,6 +128,32 @@ def read_me(current_user: UserResponse = Depends(get_current_user)):
     Retrieve the profile of the currently authenticated user.
     """
     return current_user
+
+@router.patch("/reminder-settings", response_model=UserResponse)
+def update_reminder_settings(
+    request: UserReminderSettingsUpdateRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    allowed_values = {0, 1, 3, 12, 24}
+
+    if request.chore_reminder_hours_before_due not in allowed_values:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reminder setting must be one of: 0, 1, 3, 12, 24",
+        )
+
+    updated_user = update_chore_reminder_hours_before_due(
+        userid=current_user.userid,
+        chore_reminder_hours_before_due=request.chore_reminder_hours_before_due,
+    )
+
+    if not updated_user:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update reminder setting",
+        )
+
+    return updated_user
 
 
 @router.post("/create")

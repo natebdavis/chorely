@@ -10,7 +10,7 @@ import datetime as DT
 
 from app.database import (
     add_chore as db_add_chore,
-    add_notification as db_add_notification,
+    create_notification as db_create_notification,
     get_chores as db_get_chores,
     get_chores_in_range as db_get_chores_in_range,
     get_assigned_chores_in_range as db_get_assigned_chores_in_range,
@@ -23,6 +23,7 @@ from app.database import (
     get_filtered_chores as db_get_filtered_chores,
 )
 
+from app.db.notification_repo import notification_exists
 from app.user import UserResponse, get_full_name
 from app.chore import (
     ChoreCreateInput,
@@ -47,7 +48,95 @@ from app.chore_generation import (
 )
 
 router = APIRouter(prefix="/chores", tags=["chores"])
-""" API router for chore-related endpoints. All routes defined in this module"""
+
+def _parse_iso_datetime(value: str) -> DT.datetime:
+    return DT.datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _get_now_for_datetime(value: DT.datetime) -> DT.datetime:
+    if value.tzinfo is not None:
+        return DT.datetime.now(value.tzinfo)
+    return DT.datetime.now()
+
+
+def _create_chore_notification_once(
+    userid: int,
+    notification_type: str,
+    title: str,
+    message: str,
+    reference_id: int,
+    time: str,
+):
+    if notification_exists(
+        userid=userid,
+        reference_id=reference_id,
+        notification_type=notification_type,
+    ):
+        return None
+
+    return db_create_notification(
+        NotificationCreateRequest(
+            userid=userid,
+            type=notification_type,
+            title=title,
+            message=message,
+            reference_id=reference_id,
+            time=time,
+            is_read=False,
+        )
+    )
+
+
+def _send_chore_reminders_for_current_user(
+    chores: list[ChoreResponse],
+    current_user: UserResponse,
+):
+    now_string = DT.datetime.now().isoformat()
+
+    reminder_hours = current_user.chore_reminder_hours_before_due or 24
+
+    if reminder_hours <= 0:
+        return
+
+    for chore in chores:
+        if chore.assignee_id != current_user.userid:
+            continue
+
+        if chore.status == Status.COMPLETE.name:
+            continue
+
+        if chore.due_date is None:
+            continue
+
+        try:
+            due_date = _parse_iso_datetime(chore.due_date)
+        except ValueError:
+            continue
+
+        now = _get_now_for_datetime(due_date)
+
+        if due_date < now:
+            _create_chore_notification_once(
+                userid=current_user.userid,
+                notification_type=NotificationType.CHORE_OVERDUE.value,
+                title="Chore Overdue",
+                message=f"'{chore.name}' is overdue",
+                reference_id=chore.choreid,
+                time=now_string,
+            )
+            continue
+
+        due_soon_cutoff = now + DT.timedelta(hours=reminder_hours)
+
+        if now <= due_date <= due_soon_cutoff:
+            _create_chore_notification_once(
+                userid=current_user.userid,
+                notification_type=NotificationType.CHORE_DUE_SOON.value,
+                title="Chore Due Soon",
+                message=f"'{chore.name}' is due soon",
+                reference_id=chore.choreid,
+                time=now_string,
+            )
 
 
 @router.patch("/edit/{choreid}", response_model=ChoreResponse)
@@ -250,7 +339,7 @@ def update_chore_route(
 
         if updated.assignee_id != existing.assignee_id and updated.assignee_id is not None:
             if updated.assignee_id != current_user.userid:
-                db_add_notification(
+                db_create_notification(
                     NotificationCreateRequest(
                         userid=updated.assignee_id,
                         type=NotificationType.CHORE_ASSIGNED.value,
@@ -262,9 +351,40 @@ def update_chore_route(
                     )
                 )
 
+        if existing.assignee_id is not None and updated.assignee_id is None:
+            if existing.assignee_id != current_user.userid:
+                db_create_notification(
+                    NotificationCreateRequest(
+                        userid=existing.assignee_id,
+                        type=NotificationType.CHORE_UNASSIGNED.value,
+                        title="Chore Unassigned",
+                        message=f"You are no longer assigned to the chore '{updated.name}'",
+                        reference_id=updated.choreid,
+                        time=now,
+                        is_read=False,
+                    )
+                )
+
+            if (
+                existing.requester_id is not None
+                and existing.requester_id != current_user.userid
+                and existing.requester_id != existing.assignee_id
+            ):
+                db_create_notification(
+                    NotificationCreateRequest(
+                        userid=existing.requester_id,
+                        type=NotificationType.CHORE_UNASSIGNED.value,
+                        title="Chore Unassigned",
+                        message=f"{get_full_name(current_user)} is no longer assigned to the chore '{updated.name}'",
+                        reference_id=updated.choreid,
+                        time=now,
+                        is_read=False,
+                    )
+                )
+
         if existing.status != Status.COMPLETE.name and updated.status == Status.COMPLETE.name:
             if updated.requester_id is not None and updated.requester_id != current_user.userid:
-                db_add_notification(
+                db_create_notification(
                     NotificationCreateRequest(
                         userid=updated.requester_id,
                         type=NotificationType.CHORE_COMPLETED.value,
@@ -343,6 +463,11 @@ def get_assigned_chores_range(
             )
         )
 
+        _send_chore_reminders_for_current_user(
+            chores=chores,
+            current_user=current_user,
+        )
+
         return build_chore_range_response(
             chores=chores,
             range_start=range_start,
@@ -417,6 +542,11 @@ def get_household_chores_in_range(
                 start_date=range_start.isoformat(),
                 end_date=range_end.isoformat(),
             )
+        )
+
+        _send_chore_reminders_for_current_user(
+            chores=chores,
+            current_user=current_user,
         )
 
         return build_chore_range_response(
@@ -507,7 +637,8 @@ def get_household_chores(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve chores: {str(e)}",
         )
-    
+
+
 @router.post("/filtered", response_model=list[ChoreResponse])
 def get_filtered_chores(
     request: ChoreSearchRequest,
@@ -529,7 +660,6 @@ def get_filtered_chores(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User has not joined a household",
             )
-        
 
         if request.priority is not None and request.priority not in Priority.__members__:
             raise HTTPException(
@@ -562,13 +692,15 @@ def get_filtered_chores(
                 detail="Invalid date_filter value",
             )
 
-        return list(db_get_filtered_chores(householdid=householdid, 
-                                           status=Status[request.status] if request.status else None,
-                                           priority=Priority[request.priority] if request.priority else None,
-                                           ctype=Type[request.ctype] if request.ctype else None,
-                                           location=Location[request.location] if request.location else None,
-                                           weekday=Weekday(request.weekday) if request.weekday is not None else None,
-                                           date_filter=DateFilter[request.date_filter] if request.date_filter else None))
+        return list(db_get_filtered_chores(
+            householdid=householdid,
+            status=Status[request.status] if request.status else None,
+            priority=Priority[request.priority] if request.priority else None,
+            ctype=Type[request.ctype] if request.ctype else None,
+            location=Location[request.location] if request.location else None,
+            weekday=Weekday(request.weekday) if request.weekday is not None else None,
+            date_filter=DateFilter[request.date_filter] if request.date_filter else None,
+        ))
 
     except HTTPException:
         raise
@@ -674,7 +806,7 @@ def create_chore(
             )
 
         if created.assignee_id is not None and created.assignee_id != current_user.userid:
-            db_add_notification(
+            db_create_notification(
                 NotificationCreateRequest(
                     userid=created.assignee_id,
                     type=NotificationType.CHORE_ASSIGNED.value,

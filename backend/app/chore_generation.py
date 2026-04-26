@@ -25,7 +25,6 @@ and preparing range-based calendar responses.
 Contributor: Edmund Krajewski
 """
 
-
 def _normalize_datetime(value: datetime) -> datetime:
     """
     Normalize datetimes so comparisons are always safe.
@@ -165,6 +164,7 @@ def generate_due_chores_for_household_in_range(
                 created_count += 1
 
     return created_count
+
 
 
 def build_chores_by_date(

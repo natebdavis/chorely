@@ -122,6 +122,7 @@ def add_user(
         User_Col_Name.email.value: user.email,
         User_Col_Name.phone.value: user.phone_num,
         User_Col_Name.passhash.value: user.password,
+        User_Col_Name.chore_reminder_hours_before_due.value: user.chore_reminder_hours_before_due,
     }
 
     response = client.table(USER_TABLE_NAME).insert(data).execute()
@@ -462,6 +463,28 @@ def update_user_password(
     else:
         return False
     
+def update_chore_reminder_hours_before_due(
+    userid: int,
+    chore_reminder_hours_before_due: int,
+    client: Union[Client, None] = None,
+) -> Union[UserResponse, None]:
+    if client is None:
+        client = get_client()
 
+    response = (
+        client
+        .table(USER_TABLE_NAME)
+        .update({
+            User_Col_Name.chore_reminder_hours_before_due.value: chore_reminder_hours_before_due
+        })
+        .eq(User_Col_Name.userid.value, userid)
+        .execute()
+    )
+
+    rows = response.data
+    if not rows:
+        return None
+
+    return create_UserResponse(rows[first])
 
 
