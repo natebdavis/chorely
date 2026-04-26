@@ -32,7 +32,7 @@ router = APIRouter(tags=["users"], prefix="/user")
 
 
 
-@router.get("/search", response_model=List[UserResponse])
+@router.get("/search", response_model=list[UserResponse])
 def search_users(
     q: str,
     current_user: UserResponse = Depends(get_current_user)
