@@ -150,6 +150,42 @@ type SentInviteItem = {
   }
 };
 
+
+const handleCancelInvite = async (inviteid: number) => {
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${API_URL}/invites/${inviteid}/cancel`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      Alert.alert("Success", "Invite canceled.");
+
+      setSentInvites((prev) =>
+        prev.map((invite) =>
+          invite.inviteid === inviteid
+            ? { ...invite, status: "CANCELED" }
+            : invite
+        )
+      );
+
+    } else {
+      Alert.alert("Error", data.detail || "Failed to cancel invite.");
+    }
+  } catch (error) {
+    console.log("Cancel invite error:", error);
+    Alert.alert("Error", "Something went wrong.");
+  }
+};
+
+
+
 const handleDeclineInvite = async (inviteid: number) => {
   if (!token) return;
 
@@ -273,6 +309,25 @@ const handleDeleteNotification = async (notificationid: number) => {
   }
 };
 
+const handleDeleteSentInvite = async (inviteid: number) => {
+  Alert.alert(
+    "Delete Sent Invite",
+    "Are you sure you want to delete this sent invite from your history?",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setSentInvites((prev) =>
+            prev.filter((item) => item.inviteid !== inviteid)
+          );
+        },
+      },
+    ]
+  );
+};
+
   return (
     <ImageBackground
       source={require("../../assets/images/background.png")}
@@ -350,6 +405,20 @@ const handleDeleteNotification = async (notificationid: number) => {
                   </Text>
 
                   <Text style={styles.statusText}>Status: {item.status}</Text>
+                    {item.status === "PENDING" ? (
+                      <TouchableOpacity
+                        style={[styles.cancelInviteButton, styles.declineButton]}
+                        onPress={() => handleCancelInvite(item.inviteid)}
+                      >
+                        <Text style={styles.inviteButtonText}>Cancel Invite</Text>
+                      </TouchableOpacity>
+                    ) : item.status === "CANCELED" ? (
+                      <Text style={styles.declinedStatus}>Canceled</Text>
+                    ) : item.status === "ACCEPTED" ? (
+                      <Text style={styles.acceptedStatus}>Accepted</Text>
+                    ) : item.status === "DECLINED" ? (
+                      <Text style={styles.declinedStatus}>Declined</Text>
+                    ) : null}
                 </View>
               ))
             )
@@ -772,6 +841,13 @@ inviteButtonRow: {
   marginTop: 14,
 },
 inviteButton: {
+  flex: 1,
+  paddingVertical: 10,
+  borderRadius: 10,
+  alignItems: "center",
+},
+cancelInviteButton:{
+  marginTop: 10,
   flex: 1,
   paddingVertical: 10,
   borderRadius: 10,

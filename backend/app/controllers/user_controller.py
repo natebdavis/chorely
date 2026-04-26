@@ -7,6 +7,7 @@ Contributors: Edmund Krajewski, Gilligan Berlinski
 """
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from typing import List
 import uuid, mimetypes
 
 from app.database import (
