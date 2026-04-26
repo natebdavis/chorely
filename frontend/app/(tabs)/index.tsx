@@ -7,7 +7,8 @@ import {
   Image, 
   Modal, 
   Pressable, 
-  TouchableOpacity
+  TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +16,9 @@ import { router } from "expo-router";
 import { ChoreItem } from "../../components/ChoreItem";
 import type { Chore } from "../../components/ChoreContext";
 import { useAuth } from "../../components/AuthContext";
+import * as ImagePicker from "expo-image-picker";
+
+
 
 type BackendChore = {
   choreid: number | null;
@@ -33,7 +37,8 @@ type Member = {
   lname: string;
 };
 
-const API_BASE = "https://chorely-beta-release.onrender.com";
+//const API_BASE = "https://chorely-beta-release.onrender.com";
+const API_BASE = "http://127.0.0.1:8000"
 
 function formatUnixTimestamp(timestamp: number | null) {
   if (!timestamp) {
@@ -50,7 +55,7 @@ function formatUnixTimestamp(timestamp: number | null) {
 }
 
 export default function ChoreBoard() {
-  const {user, logout } = useAuth();
+  const {user, logout,updateProfilePic } = useAuth();
   const username = user?.username ?? "User";
   const userId = user?.userid ?? "N/A";
   const phone = user?.userid ?? "N/A"; //need to update to actual phone
@@ -64,6 +69,10 @@ export default function ChoreBoard() {
   const [error, setError] = useState<string | null>(null);
   const [showDropdownFor, setShowDropdownFor] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+
+  const profileImageSource = user?.profile_url
+  ? { uri: user.profile_url }
+  : require("../../assets/images/default_profile.png"); 
 
   const handleStatusChange = async (choreId: string, newStatus: string, assigneeId?: number | null) => {
     try {
@@ -156,6 +165,75 @@ export default function ChoreBoard() {
     loadMembers();
   }, []);
 
+  const handleUploadProfilePic = async () => {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+  if (!permission.granted) {
+    Alert.alert("Permission Required", "Please allow photo access.");
+    return;
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.8,
+  });
+
+  if (result.canceled) return;
+
+  const image = result.assets[0];
+
+  const formData = new FormData();
+
+  formData.append("file", {
+    uri: image.uri,
+    name: "profile.jpg",
+    type: "image/jpeg",
+  } as any);
+
+  try {
+    const response = await fetch(`${API_BASE}/user/upload-image`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${user?.token}`,
+        "Content-Type": "multipart/form-data",
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      Alert.alert("Error", "Failed to upload profile picture.");
+      return;
+    }
+
+    const data = await response.json();//testing
+    console.log("upload response:", JSON.stringify(data));  // add this to see what comes back
+    updateProfilePic(data.url ?? data.profile_url ?? data.image_url ?? null);//testing
+
+    const picResponse = await fetch(`${API_BASE}/user/profile-pic`, {
+      headers: {
+        Authorization: `Bearer ${user?.token}`,
+      },
+    });
+
+    if (picResponse.ok) {
+      const picData = await picResponse.json();
+      updateProfilePic(picData.url);
+    }
+
+    //const data = await response.json();
+
+   // updateProfilePic(data.url ?? data.profile_url ?? null);
+
+    Alert.alert("Success", "Profile picture updated.");
+  } catch (error) {
+    console.log("Upload profile picture error:", error);
+    Alert.alert("Error", "Something went wrong while uploading.");
+  }
+};
+
+
   return (
     <ImageBackground
       source={require("../../assets/images/background.png")}
@@ -168,7 +246,8 @@ export default function ChoreBoard() {
 
             <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.avatarButton}>
               <Image
-                source={require("../../assets/images/default_profile.png")}
+                //source={require("../../assets/images/default_profile.png")}
+                source={profileImageSource}
                 style={styles.avatar}
               />
             </TouchableOpacity>
@@ -234,10 +313,13 @@ export default function ChoreBoard() {
           <View style={styles.menuContainer}>
 
             <View style={styles.menuHeader}>
-              <Image
-                source={require("../../assets/images/default_profile.png")}
-                style={styles.menuAvatar}
-              />
+              <TouchableOpacity onPress={handleUploadProfilePic} style={styles.menuAvatarWrapper}>
+                <Image source={profileImageSource} style={styles.menuAvatar} />
+
+                <View style={styles.menuEditPencil}>
+                  <Ionicons name="pencil" size={14} color="#fff" />
+                </View>
+              </TouchableOpacity>
 
               <Text style={styles.menuUsername}>Hello, {username}!</Text>
               <Text style={styles.menuId}>ID: {userId}</Text>
@@ -485,7 +567,7 @@ const styles = StyleSheet.create({
   menuAvatar: {
     width: 90,
     height: 90,
-    borderRadius: 40,
+    borderRadius: 45,
     marginBottom: 10,
     backgroundColor: "#333",
   },
@@ -541,5 +623,25 @@ headerRow: {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
+},
+menuAvatarWrapper: {
+  width: 90,
+  height: 90,
+  borderRadius: 45,
+  marginBottom: 10,
+  position: "relative",
+},
+menuEditPencil: {
+  position: "absolute",
+  right: 0,
+  bottom: 0,
+  width: 26,
+  height: 26,
+  borderRadius: 13,
+  backgroundColor: "#4A90E2",
+  alignItems: "center",
+  justifyContent: "center",
+  borderWidth: 2,
+  borderColor: "#1C1C1E",
 },
 });

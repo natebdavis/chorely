@@ -25,6 +25,11 @@ import { router } from "expo-router";
 const API_URL = "http://127.0.0.1:8000"
 
 import { useAuth } from "../../components/AuthContext";
+// const profileImageSource = user?.profile_url
+//   ? { uri: user.profile_url }
+//   : require("../../assets/images/default_profile.png");
+
+
 interface Member {
   userid: number;
   username: string;

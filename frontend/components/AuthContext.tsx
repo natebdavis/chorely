@@ -8,6 +8,7 @@ type AuthUser = {
   username: string;
   householdid: number | null;
   token: string;
+  profile_url: string | null;
 };
 
 type AuthContextValue = {
@@ -15,6 +16,7 @@ type AuthContextValue = {
   login: (username: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  updateProfilePic: (profileUrl: string | null) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -70,12 +72,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const meData = await meResponse.json();
+      console.log("meData:", JSON.stringify(meData));//new testing
+
+      let profileUrl: string | null = meData.profile_url ?? null; //new
+
+      const picResponse = await fetch(`${API_URL}/user/profile-pic`, { //new
+        headers: { Authorization: `Bearer ${token}` },//new
+      });//new
+      console.log("pic status:", picResponse.status);
+      const picText = await picResponse.text();
+      console.log("pic raw response:", picText);
+      
+      if (picResponse.ok) {//new
+        //const picData = await picResponse.json();//new
+        //profileUrl = picData.url ?? null;//new
+        const picData = await picResponse.json();
+        //console.log("pic data:", JSON.stringify(picData));
+        console.log("picData full response:", JSON.stringify(picData));
+        profileUrl = picData.url ?? null;
+      }
+      console.log("final profileUrl being saved:", profileUrl);
+
 
       const authUser: AuthUser = {
         token,
         userid: meData.userid,
         username: meData.username,
         householdid: meData.householdid ?? null,
+        profile_url: meData.profile_url ?? null,
       };
 
       // save to AsyncStorage so session doesnt end when app is closed
@@ -88,13 +112,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+    const updateProfilePic = async (profileUrl: string | null) => {//new
+    setUser((prevUser) => {
+      if (!prevUser) return prevUser;
+
+      const updatedUser = {
+        ...prevUser,
+        profile_url: profileUrl,
+      };
+
+      AsyncStorage.setItem("auth_user", JSON.stringify(updatedUser));
+
+      return updatedUser;
+    });//new
+  };
+
   const logout = async () => {
     await AsyncStorage.removeItem("auth_user");
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, updateProfilePic }}>
       {children}
     </AuthContext.Provider>
   );
