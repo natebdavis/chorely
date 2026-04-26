@@ -254,7 +254,6 @@ export default function ChoreBoard() {
 
              <Text style={styles.greetingText}>Hi, {username}</Text>
               
-              <View style = {styles.headerSpacer} />
           </View>
            <Text style={styles.title}>Chore Board</Text>
         </View>

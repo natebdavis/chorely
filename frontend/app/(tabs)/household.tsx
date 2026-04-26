@@ -352,7 +352,7 @@ const handleJoinHousehold = async () => {
             </TouchableOpacity>
             
             <Text style={styles.greetingText}>Hi, {username}</Text>
-            <View style={styles.headerSpacer} />
+            
           </View>
 
           <View style={styles.householdInfoContainer}>
