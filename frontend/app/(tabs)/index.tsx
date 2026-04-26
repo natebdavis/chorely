@@ -4,13 +4,13 @@ import {
   StyleSheet,
   Text,
   View,
-  Image, 
-  Modal, 
-  Pressable, 
+  Image,
+  Modal,
+  Pressable,
   TouchableOpacity,
   Alert,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { ChoreItem } from "../../components/ChoreItem";
@@ -24,8 +24,8 @@ type BackendChore = {
   choreid: number | null;
   name: string;
   description: string;
-  request_date: number | null;
-  due_date: number | null;
+  request_date: string | null;
+  due_date: string | null;
   assignee: string | null;
   status: string | null;
 };
@@ -40,12 +40,9 @@ type Member = {
 //const API_BASE = "https://chorely-beta-release.onrender.com";
 const API_BASE = "http://127.0.0.1:8000"
 
-function formatUnixTimestamp(timestamp: number | null) {
-  if (!timestamp) {
-    return "Unknown";
-  }
-
-  return new Date(timestamp * 1000).toLocaleString([], {
+function formatISODate(isoString: string | null) {
+  if (!isoString) return "Unknown";
+  return new Date(isoString).toLocaleString([], {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -69,6 +66,40 @@ export default function ChoreBoard() {
   const [error, setError] = useState<string | null>(null);
   const [showDropdownFor, setShowDropdownFor] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const getWeekDates = useCallback((offset: number): Date[] => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - dayOfWeek + offset * 7);
+    startOfWeek.setHours(0, 0, 0, 0);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + i);
+      return d;
+    });
+  }, []);
+
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  const weekDates = getWeekDates(weekOffset);
+  const today = new Date();
+
+  const filteredChores = selectedDate
+    ? chores.filter((c) => {
+        if (!c.dueDateTimestamp) return false;
+        const choreDate = new Date(c.dueDateTimestamp);
+        return isSameDay(choreDate, selectedDate);
+      })
+    : chores;
+
+  const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   const profileImageSource = user?.profile_url
   ? { uri: user.profile_url }
@@ -135,8 +166,9 @@ export default function ChoreBoard() {
             name: backendChore.name,
             description: backendChore.description,
             assignedTo: backendChore.assignee ?? "Unassigned",
-            requestDate: formatUnixTimestamp(backendChore.request_date),
-            dueDate: formatUnixTimestamp(backendChore.due_date),
+            requestDate: formatISODate(backendChore.request_date),
+            dueDate: formatISODate(backendChore.due_date),
+            dueDateTimestamp: backendChore.due_date,
             status: backendChore.status ?? "Unknown",
           }))
         );
@@ -255,7 +287,62 @@ export default function ChoreBoard() {
              <Text style={styles.greetingText}>Hi, {username}</Text>
               
           </View>
-           <Text style={styles.title}>Chore Board</Text>
+           <Text style={styles.title}>
+            {selectedDate
+              ? isSameDay(selectedDate, today)
+                ? "Today's Chores"
+                : selectedDate.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })
+              : "All Chores"}
+          </Text>
+
+        <View style={styles.calendarStrip}>
+          <View style={styles.calendarNav}>
+            <TouchableOpacity onPress={() => setWeekOffset((w) => w - 1)} style={styles.navArrow}>
+              <Text style={styles.navArrowText}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.calendarMonth}>
+              {MONTH_NAMES[weekDates[0].getMonth()]} {weekDates[0].getFullYear()}
+              {weekDates[0].getMonth() !== weekDates[6].getMonth()
+                ? ` – ${MONTH_NAMES[weekDates[6].getMonth()]}`
+                : ""}
+            </Text>
+            <TouchableOpacity onPress={() => setWeekOffset((w) => w + 1)} style={styles.navArrow}>
+              <Text style={styles.navArrowText}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setSelectedDate(null)}
+              style={[styles.allButton, !selectedDate && styles.allButtonActive]}
+            >
+              <Text style={styles.allButtonText}>All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.calendarDays}>
+            {weekDates.map((date, i) => {
+              const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
+              const isToday = isSameDay(date, today);
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={[styles.dayCell, isSelected && styles.dayCellSelected]}
+                  onPress={() =>
+                    setSelectedDate((prev) =>
+                      prev && isSameDay(prev, date) ? null : date
+                    )
+                  }
+                >
+                  <Text style={[styles.dayLabel, isSelected && styles.dayLabelSelected]}>
+                    {DAY_LABELS[date.getDay()]}
+                  </Text>
+                  <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
+                    {date.getDate()}
+                  </Text>
+                  {isToday && !isSelected && <View style={styles.todayDot} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
         </View>
 
 
@@ -277,15 +364,19 @@ export default function ChoreBoard() {
             <Text style={styles.emptyTitle}>Failed to load chores</Text>
             <Text style={styles.emptyText}>{error}</Text>
           </View>
-        ) : chores.length === 0 ? (
+        ) : filteredChores.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No chores yet</Text>
+            <Text style={styles.emptyTitle}>
+              {selectedDate ? "No chores on this day" : "No chores yet"}
+            </Text>
             <Text style={styles.emptyText}>
-              Create a chore to get started.
+              {selectedDate
+                ? "Try selecting a different date or tap All to see everything."
+                : "Create a chore to get started."}
             </Text>
           </View>
         ) : (
-          chores.map((chore) => (
+          filteredChores.map((chore) => (
             <ChoreItem
               key={chore.id}
               chore={chore}
@@ -467,7 +558,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 190,
+    paddingTop: 290,
     paddingBottom: 110,
   },
   title: {
@@ -598,11 +689,92 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: 60, // space for status bar
-    paddingBottom: 16,
+    paddingTop: 60,
+    paddingBottom: 12,
     paddingHorizontal: 20,
     zIndex: 10,
-},
+  },
+  calendarStrip: {
+    marginTop: 10,
+    backgroundColor: "rgba(1, 11, 31, 0.85)",
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  calendarNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  navArrow: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  navArrowText: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "300",
+  },
+  calendarMonth: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  allButton: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginLeft: 6,
+  },
+  allButtonActive: {
+    backgroundColor: "#4A90E2",
+  },
+  allButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  calendarDays: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  dayCell: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  dayCellSelected: {
+    backgroundColor: "#4A90E2",
+  },
+  dayLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 11,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  dayLabelSelected: {
+    color: "#fff",
+  },
+  dayNumber: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  dayNumberSelected: {
+    color: "#fff",
+  },
+  todayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#4A90E2",
+    marginTop: 2,
+  },
 greetingContainer: {
   flexDirection: "row",
   alignItems: "center",

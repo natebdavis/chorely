@@ -13,6 +13,7 @@ export type Chore = {
   assignedTo: string;
   requestDate?: string;
   dueDate?: string;
+  dueDateTimestamp?: string | null;
   status?: string;
 };
 
