@@ -56,8 +56,8 @@ export default function Household() {
   const [menuVisible, setMenuVisible] = useState(false);
   const username = user?.username ?? "User";
   const userId = user?.userid ?? "N/A";
-  const phone = user?.userid ?? "N/A"; //need to update to actual phone
-  const email = user?.userid ?? "N/A";
+  const phone = user?.phone_num ?? "N/A";
+  const email = user?.email ?? "N/A";
 
   const [searchResults, setSearchResults] = useState<Member[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);

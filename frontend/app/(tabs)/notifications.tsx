@@ -24,8 +24,8 @@ export default function NotificationsScreen() {
 
   const username = user?.username ?? "User";
   const userId = user?.userid ?? "N/A";
-  const phone = user?.userid ?? "N/A"; //need to update to actual phone
-  const email = user?.userid ?? "N/A"; //need to update to actual email
+  const phone = user?.phone_num ?? "N/A"; 
+  const email = user?.email ?? "N/A";
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<"inbox" | "sent">("inbox");
@@ -353,7 +353,13 @@ const handleDeleteSentInvite = async (inviteid: number) => {
         <Text style={styles.title}>Notifications</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.container}>
+     <View style={styles.container}>
+      <ScrollView
+          style={styles.notificationList}
+          contentContainerStyle={styles.notificationListContent}
+          showsVerticalScrollIndicator={true}
+        >
+
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === "inbox" && styles.activeTab]}
@@ -479,9 +485,9 @@ const handleDeleteSentInvite = async (inviteid: number) => {
     </View>
   ))
         )}
+            </ScrollView>
 
-
-      </ScrollView>
+      </View>
 
       <Modal
         visible={menuVisible}
@@ -889,5 +895,11 @@ timeText: {
   fontSize: 12,
   color: "#888",
   marginTop: 6,
+},
+notificationList: {
+  maxHeight: 560, 
+},
+notificationListContent: {
+  paddingBottom: 20,
 },
 });

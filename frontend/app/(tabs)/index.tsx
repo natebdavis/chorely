@@ -58,8 +58,8 @@ export default function ChoreBoard() {
   const {user, logout,updateProfilePic } = useAuth();
   const username = user?.username ?? "User";
   const userId = user?.userid ?? "N/A";
-  const phone = user?.userid ?? "N/A"; //need to update to actual phone
-  const email = user?.userid ?? "N/A"; //need to update to actual email
+  const phone = user?.phone_num ?? "N/A"; 
+  const email = user?.email ?? "N/A";
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showSettingDropdown, setShowSettingDropdown] = useState(false);

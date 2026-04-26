@@ -6,6 +6,8 @@ const API_URL = "https://chorely-beta-release.onrender.com";
 type AuthUser = {
   userid: number | null;
   username: string;
+  email: string;
+  phone_num: string | null ;
   householdid: number | null;
   token: string;
   profile_url: string | null;
@@ -88,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         userid: meData.userid,
         username: meData.username,
+        email: meData.email,
+        phone_num: meData.phone_num,
         householdid: meData.householdid ?? null,
         profile_url: meData.profile_url ?? null,
       };
