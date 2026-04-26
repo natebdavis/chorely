@@ -7,10 +7,11 @@ from app.user import UserResponse, get_full_name
 
 """
 Module for managing Chore operations.
-Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
+Contributers: Gilligan Berlinski, Edmund Krajewski, Nathaniel Davis
 """
 
 CHORE_TABLE_NAME = "chores"
+
 
 class ChoreEditRequest(BaseModel):
     """
@@ -22,6 +23,7 @@ class ChoreEditRequest(BaseModel):
     priority: Union[str, None] = None
     location: Union[str, None] = None
     ctype: Union[str, None] = None
+
 
 class ChoreCreateInput(BaseModel):
     """
@@ -48,6 +50,7 @@ class ChoreCreateRequest(BaseModel):
     due_date: str
     requester_id: int
     assignee_id: Union[int, None] = None
+    template_id: Union[int, None] = None
     status: str
     ctype: Union[str, None] = None
     priority: Union[str, None] = None
@@ -72,6 +75,14 @@ class ChoreDeleteRequest(BaseModel):
     choreid: int
 
 
+class ChoreRangeQuery(BaseModel):
+    """
+    Query schema for fetching chores in a date range.
+    """
+    start_date: str
+    end_date: str
+
+
 class ChoreResponse(BaseModel):
     """
     Response schema returned for Chore-related API requests.
@@ -84,11 +95,52 @@ class ChoreResponse(BaseModel):
     due_date: Union[str, None] = None
     requester_id: Union[int, None] = None
     assignee_id: Union[int, None] = None
+    template_id: Union[int, None] = None
     assignee: Union[str, None] = None
     status: Union[str, None] = None
     ctype: Union[str, None] = None
     priority: Union[str, None] = None
     location: Union[str, None] = None
+
+class ChoreSearchRequest(BaseModel):
+    """
+    Request body schema for searching/filtering Chores.
+    """
+    status: Union[str, None] = None
+    priority: Union[str, None] = None
+    location: Union[str, None] = None
+    ctype: Union[str, None] = None
+    date_filter: Union[str, None] = None   # "TODAY" | "WEEK" | "MONTH"
+    weekday: Union[int, None] = None       # 0=Mon ... 6=Sun
+
+
+class CalendarDateMetaResponse(BaseModel):
+    """
+    Summary metadata for a calendar date.
+
+    Used by the frontend to decorate dates in the calendar view
+    without having to recalculate business logic client-side.
+    """
+    has_chores: bool = False
+    has_incomplete: bool = False
+    has_overdue: bool = False
+    has_assigned_to_me: bool = False
+    has_high_priority: bool = False
+    chore_count: int = 0
+
+
+class ChoreRangeResponse(BaseModel):
+    """
+    Range-based response for cached calendar/day views.
+
+    chores_by_date:
+        Maps YYYY-MM-DD -> list of chores due on that date
+
+    calendar_meta:
+        Maps YYYY-MM-DD -> summary flags used to decorate the calendar UI
+    """
+    chores_by_date: dict[str, list[ChoreResponse]]
+    calendar_meta: dict[str, CalendarDateMetaResponse]
 
 
 class Chore_Col_Name(Enum):
@@ -100,6 +152,7 @@ class Chore_Col_Name(Enum):
     due_date = "due_date"
     requester = "request_user"
     assignee = "assigned_user"
+    template_id = "template_id"
     status = "cstatus"
     householdid = "householdid"
     priority = "priority"
@@ -114,6 +167,7 @@ class Status(Enum):
     COMPLETE = auto()
     CANCELLED = auto()
 
+
 class Location(Enum):
     """Location of Chore."""
     KITCHEN = auto()
@@ -123,6 +177,7 @@ class Location(Enum):
     OUTSIDE = auto()
     SHARED = auto()
     STORE = auto()
+
 
 class Type(Enum):
     """Type of Chore."""
@@ -135,6 +190,7 @@ class Type(Enum):
     ADMINSTRATIVE = auto()
     ORGANIZING = auto()
     OTHER = auto()
+
 
 class Priority(Enum):
     """Priority of Chore."""
@@ -154,11 +210,11 @@ def create_ChoreCreateRequest(data: dict) -> ChoreCreateRequest:
         due_date=data[Chore_Col_Name.due_date.value],
         requester_id=data[Chore_Col_Name.requester.value],
         assignee_id=data[Chore_Col_Name.assignee.value],
+        template_id=data.get(Chore_Col_Name.template_id.value),
         status=status,
         priority=data[Chore_Col_Name.priority.value],
         ctype=data[Chore_Col_Name.ctype.value],
         location=data[Chore_Col_Name.location.value],
-
     )
 
 
@@ -181,6 +237,7 @@ def create_ChoreDeleteRequest(data: dict) -> ChoreDeleteRequest:
     return ChoreDeleteRequest(
         choreid=data[Chore_Col_Name.choreid.value]
     )
+
 
 def create_ChoreEditRequest(data: dict) -> ChoreEditRequest:
     return ChoreEditRequest(
@@ -205,6 +262,7 @@ def create_ChoreResponse(data: dict, assignee: Union[UserResponse, None] = None)
         due_date=data[Chore_Col_Name.due_date.value],
         requester_id=data[Chore_Col_Name.requester.value],
         assignee_id=data[Chore_Col_Name.assignee.value],
+        template_id=data.get(Chore_Col_Name.template_id.value),
         assignee=assignee_name,
         status=data[Chore_Col_Name.status.value],
         priority=data[Chore_Col_Name.priority.value],

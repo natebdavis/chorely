@@ -1,17 +1,23 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from typing import Union
+
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 import datetime as DT
 
 from app.database import (
     add_chore as db_add_chore,
     add_notification as db_add_notification,
     get_chores as db_get_chores,
+    get_chores_in_range as db_get_chores_in_range,
+    get_assigned_chores_in_range as db_get_assigned_chores_in_range,
     get_current_user,
     get_user as db_get_user,
     get_chore as db_get_chore,
     remove_chore as db_remove_chore,
     update_chore as db_update_chore,
-    edit_chore as db_edit_chore
+    edit_chore as db_edit_chore,
+    get_filtered_chores as db_get_filtered_chores,
 )
+
 from app.user import UserResponse, get_full_name
 from app.chore import (
     ChoreCreateInput,
@@ -20,12 +26,23 @@ from app.chore import (
     ChoreEditRequest,
     ChoreResponse,
     ChoreUpdateRequest,
+    ChoreSearchRequest,
+    ChoreRangeResponse,
     Priority,
     Location,
     Type,
     Status,
 )
+
 from app.notification import NotificationCreateRequest, NotificationType
+from app.utils import Weekday, DateFilter
+from app.chore_generation import (
+    generate_due_chores_for_household_in_range,
+    build_chore_range_response,
+)
+
+router = APIRouter(prefix="/chores", tags=["chores"])
+
 
 """
 Module for managing Chore Controller operations.
@@ -36,6 +53,7 @@ Contributers: Edmund Krajewski, Gilligan Berlinski
 """
 
 router = APIRouter(prefix="/chores", tags=["chores"])
+
 
 @router.patch("/edit/{choreid}", response_model=ChoreResponse)
 def edit_chore_route(
@@ -60,14 +78,13 @@ def edit_chore_route(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Chore not found in user's household",
             )
-        
+
         if current_user.userid != chore.requester_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the requester can edit this chore",
             )
-        
-        # Validate priority, type, and location if they are provided
+
         if payload.priority is not None and payload.priority not in Priority.__members__:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -101,7 +118,8 @@ def edit_chore_route(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to edit chore: {str(e)}",
         )
-    
+
+
 @router.patch("/{choreid}", response_model=ChoreResponse)
 def update_chore_route(
     choreid: int,
@@ -139,8 +157,7 @@ def update_chore_route(
         final_status = existing.status
         if status_provided and payload.status is not None:
             final_status = payload.status.upper()
-        
-        # Validate priority, type, and location if they are provided
+
         if payload.priority is not None and payload.priority not in Priority.__members__:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -212,7 +229,7 @@ def update_chore_route(
             assignee_provided=assignee_provided,
             priority=payload.priority,
             ctype=payload.ctype,
-            location=payload.location
+            location=payload.location,
         )
 
         if not updated:
@@ -262,6 +279,145 @@ def update_chore_route(
         )
 
 
+@router.get("/assigned/range", response_model=ChoreRangeResponse)
+def get_assigned_chores_range(
+    start_date: str = Query(..., description="Inclusive ISO date or datetime lower bound"),
+    end_date: str = Query(..., description="Inclusive ISO date or datetime upper bound"),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Retrieve chores assigned to the current user in a specific date range.
+
+    This endpoint still generates household recurring chores for the range first,
+    then filters the returned chores down to only those assigned to the user.
+    """
+    try:
+        householdid = current_user.householdid
+
+        if householdid is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User has not joined a household",
+            )
+
+        try:
+            range_start = DT.datetime.fromisoformat(start_date)
+            range_end = DT.datetime.fromisoformat(end_date)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date format. Use ISO format, e.g. 2026-04-01 or 2026-04-01T00:00:00",
+            )
+
+        if range_end < range_start:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="end_date must be greater than or equal to start_date",
+            )
+
+        generate_due_chores_for_household_in_range(
+            householdid=householdid,
+            range_start=range_start,
+            range_end=range_end,
+        )
+
+        chores = list(
+            db_get_assigned_chores_in_range(
+                householdid=householdid,
+                userid=current_user.userid,
+                start_date=range_start.isoformat(),
+                end_date=range_end.isoformat(),
+            )
+        )
+
+        return build_chore_range_response(
+            chores=chores,
+            range_start=range_start,
+            range_end=range_end,
+            now=DT.datetime.now(),
+            current_user_id=current_user.userid,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve assigned chores in range: {str(e)}",
+        )
+
+
+@router.get("/range", response_model=ChoreRangeResponse)
+def get_household_chores_in_range(
+    start_date: str = Query(..., description="Inclusive ISO date or datetime lower bound"),
+    end_date: str = Query(..., description="Inclusive ISO date or datetime upper bound"),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Retrieve chores for the current user's household in a specific date range.
+
+    This endpoint also generates any missing recurring chores for the requested
+    range before returning the response.
+
+    The response is optimized for mobile calendar/day caching and includes:
+    - chores grouped by date
+    - per-date calendar metadata such as overdue markers
+    """
+    try:
+        householdid = current_user.householdid
+
+        if householdid is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User has not joined a household",
+            )
+
+        try:
+            range_start = DT.datetime.fromisoformat(start_date)
+            range_end = DT.datetime.fromisoformat(end_date)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date format. Use ISO format, e.g. 2026-04-01 or 2026-04-01T00:00:00",
+            )
+
+        if range_end < range_start:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="end_date must be greater than or equal to start_date",
+            )
+
+        generate_due_chores_for_household_in_range(
+            householdid=householdid,
+            range_start=range_start,
+            range_end=range_end,
+        )
+
+        chores = list(
+            db_get_chores_in_range(
+                householdid=householdid,
+                start_date=range_start.isoformat(),
+                end_date=range_end.isoformat(),
+            )
+        )
+
+        return build_chore_range_response(
+            chores=chores,
+            range_start=range_start,
+            range_end=range_end,
+            now=DT.datetime.now(),
+            current_user_id=current_user.userid,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve chores in range: {str(e)}",
+        )
+
+
 @router.get("/{choreid}", response_model=ChoreResponse)
 def get_chore_route(
     choreid: int,
@@ -302,6 +458,8 @@ def get_household_chores(
 ):
     """
     Retrieve all chores for the current user's household.
+
+    Legacy endpoint retained for compatibility.
     """
     try:
         householdid = current_user.householdid
@@ -313,6 +471,71 @@ def get_household_chores(
             )
 
         return list(db_get_chores(householdid))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve chores: {str(e)}",
+        )
+    
+@router.post("/filtered", response_model=list[ChoreResponse])
+def get_filtered_chores(
+    request: ChoreSearchRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Retrieve chores for the current user's household filtered by various criteria.
+    """
+    try:
+        householdid = current_user.householdid
+
+        if householdid is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User has not joined a household",
+            )
+        
+
+        if request.priority is not None and request.priority not in Priority.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid priority value",
+            )
+        if request.ctype is not None and request.ctype not in Type.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid type value",
+            )
+        if request.location is not None and request.location not in Location.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid location value",
+            )
+        if request.status is not None and request.status not in Status.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid status value",
+            )
+        if request.weekday is not None and (request.weekday < Weekday.MONDAY or request.weekday > Weekday.SUNDAY):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="weekday must be between 0 (Mon) and 6 (Sun)",
+            )
+        if request.date_filter is not None and request.date_filter not in DateFilter.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date_filter value",
+            )
+
+        return list(db_get_filtered_chores(householdid=householdid, 
+                                           status=Status[request.status] if request.status else None,
+                                           priority=Priority[request.priority] if request.priority else None,
+                                           ctype=Type[request.ctype] if request.ctype else None,
+                                           location=Location[request.location] if request.location else None,
+                                           weekday=Weekday(request.weekday) if request.weekday is not None else None,
+                                           date_filter=DateFilter[request.date_filter] if request.date_filter else None))
 
     except HTTPException:
         raise
@@ -353,8 +576,7 @@ def create_chore(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Assignee must be in the same household as the requester",
                 )
-            
-        # Validate priority, type, and location if they are provided
+
         if payload.priority is not None and payload.priority not in Priority.__members__:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -370,10 +592,14 @@ def create_chore(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid location value",
             )
-        
+
         try:
             due_date = DT.datetime.fromisoformat(payload.due_date)
-            current_time = DT.datetime.now()
+
+            if due_date.tzinfo is not None:
+                current_time = DT.datetime.now(due_date.tzinfo)
+            else:
+                current_time = DT.datetime.now()
 
             if due_date < current_time:
                 raise HTTPException(
@@ -394,10 +620,11 @@ def create_chore(
             due_date=payload.due_date,
             requester_id=current_user.userid,
             assignee_id=payload.assignee_id,
+            template_id=None,
             status=Status.IN_PROGRESS.name if payload.assignee_id is not None else Status.UNASSIGNED.name,
             priority=payload.priority,
             ctype=payload.ctype,
-            location=payload.location
+            location=payload.location,
         )
 
         created = db_add_chore(final_payload)
