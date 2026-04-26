@@ -56,6 +56,24 @@ type SentInviteItem = {
   responded_at: string | null;
 };
 
+const formatTime = (isoString: string) => {
+  const date = new Date(isoString);
+
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const getDisplayTime = (item: SentInviteItem) => {
+  if (item.responded_at) {
+    return `Responded: ${formatTime(item.responded_at)}`;
+  }
+  return `Sent: ${formatTime(item.created_at)}`;
+};
+
     const fetchNotifications = async () => {
       if (!token) return;
 
@@ -403,10 +421,8 @@ const handleDeleteSentInvite = async (inviteid: number) => {
                 <View key={item.inviteid} style={styles.notificationCard}>
                   <Text style={styles.notificationTitle}>Household Invite Sent</Text>
 
-                  <Text style={styles.notificationMessage}>
-                    Invite sent to User ID: {item.invitee_userid}
-
-                  </Text>
+                  <Text style={styles.notificationMessage}>  Invite sent to User ID: {item.invitee_userid} </Text>
+                  <Text style={styles.timeText}>{getDisplayTime(item)} </Text>
 
                   <Text style={styles.statusText}>Status: {item.status}</Text>
                     {item.status === "PENDING" ? (
@@ -453,6 +469,7 @@ const handleDeleteSentInvite = async (inviteid: number) => {
 
 
         <Text style={styles.notificationMessage}>{item.message}</Text>
+        <Text style={styles.timeText}>{formatTime(item.time)}</Text>
 
         {item.type === "INVITE" && item.reference_id !== null && inviteStatuses[item.reference_id] === "PENDING" ? (
         
@@ -888,5 +905,10 @@ notificationHeader: {
   justifyContent: "space-between",
   alignItems: "center",
   gap: 12,
+},
+timeText: {
+  fontSize: 12,
+  color: "#888",
+  marginTop: 6,
 },
 });
