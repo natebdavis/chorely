@@ -71,28 +71,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return "Failed to load user profile";
       }
 
-      const meData = await meResponse.json();
-      console.log("meData:", JSON.stringify(meData));//new testing
+       const meData = await meResponse.json();
 
-      let profileUrl: string | null = meData.profile_url ?? null; //new
+      let profileUrl: string | null = meData.profile_url ?? null; 
 
-      const picResponse = await fetch(`${API_URL}/user/profile-pic`, { //new
-        headers: { Authorization: `Bearer ${token}` },//new
-      });//new
-      console.log("pic status:", picResponse.status);
-      const picText = await picResponse.text();
-      console.log("pic raw response:", picText);
-      
-      if (picResponse.ok) {//new
-        //const picData = await picResponse.json();//new
-        //profileUrl = picData.url ?? null;//new
+      const picResponse = await fetch(`${API_URL}/user/profile-pic`, { 
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (picResponse.ok) {
         const picData = await picResponse.json();
-        //console.log("pic data:", JSON.stringify(picData));
-        console.log("picData full response:", JSON.stringify(picData));
         profileUrl = picData.url ?? null;
       }
-      console.log("final profileUrl being saved:", profileUrl);
-
 
       const authUser: AuthUser = {
         token,
@@ -102,17 +92,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile_url: meData.profile_url ?? null,
       };
 
+      const savedPic = await AsyncStorage.getItem(`profile_url_${meData.userid}`);
+      if (savedPic) {
+        authUser.profile_url = savedPic;
+      }
+
       // save to AsyncStorage so session doesnt end when app is closed
       await AsyncStorage.setItem("auth_user", JSON.stringify(authUser));
       setUser(authUser);
 
-      return null; // null = success
+      return null; 
     } catch (e) {
       return "Could not connect to the server";
     }
   };
 
-    const updateProfilePic = async (profileUrl: string | null) => {//new
+    const updateProfilePic = async (profileUrl: string | null) => {
     setUser((prevUser) => {
       if (!prevUser) return prevUser;
 
@@ -122,9 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       AsyncStorage.setItem("auth_user", JSON.stringify(updatedUser));
+      AsyncStorage.setItem(`profile_url_${prevUser.userid}`, profileUrl ?? "");
 
       return updatedUser;
-    });//new
+    });
   };
 
   const logout = async () => {

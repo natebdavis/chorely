@@ -207,9 +207,9 @@ export default function ChoreBoard() {
       return;
     }
 
-    const data = await response.json();//testing
-    console.log("upload response:", JSON.stringify(data));  // add this to see what comes back
-    updateProfilePic(data.url ?? data.profile_url ?? data.image_url ?? null);//testing
+    // const data = await response.json();//testing
+    // console.log("upload response:", JSON.stringify(data));  // add this to see what comes back
+    // updateProfilePic(data.url ?? data.profile_url ?? data.image_url ?? null);//testing
 
     const picResponse = await fetch(`${API_BASE}/user/profile-pic`, {
       headers: {

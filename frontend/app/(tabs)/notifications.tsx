@@ -35,6 +35,10 @@ export default function NotificationsScreen() {
   const [sentInvites, setSentInvites] = useState<SentInviteItem[]>([]);
   const [inviteStatuses, setInviteStatuses] = useState<Record<number, string>>({});
 
+    const profileImageSource = user?.profile_url
+  ? { uri: user.profile_url }
+  : require("../../assets/images/default_profile.png");
+
   type NotificationItem = {
   notificationid: number;
   userid: number;
@@ -246,31 +250,6 @@ const handleDeclineInvite = async (inviteid: number) => {
   }
 };
 
-// const fetchPendingInvites = async () => {
-//   if (!token) return;
-
-//   try {
-//     const response = await fetch(`${API_URL}/invites`, {
-//       headers: {
-//         Authorization: `Bearer ${token}`,
-//       },
-//     });
-
-//     const data = await response.json();
-
-//     if (response.ok) {
-//       const statusMap: Record<number, string> = {};
-
-//       data.forEach((invite: SentInviteItem) => {
-//         statusMap[invite.inviteid] = invite.status;
-//       });
-
-//       setInviteStatuses(statusMap);
-//     }
-//   } catch (error) {
-//     console.log("Pending invite fetch error:", error);
-//   }
-// };
 
 const fetchInviteHistory = async () => {
   if (!token) return;
@@ -363,7 +342,7 @@ const handleDeleteSentInvite = async (inviteid: number) => {
             style={styles.avatarButton}
           >
             <Image
-              source={require("../../assets/images/default_profile.png")}
+              source={profileImageSource} 
               style={styles.avatar}
             />
           </TouchableOpacity>
@@ -517,7 +496,7 @@ const handleDeleteSentInvite = async (inviteid: number) => {
           <Pressable style={styles.menuContainer}>
             <View style={styles.menuHeader}>
               <Image
-                source={require("../../assets/images/default_profile.png")}
+                source={profileImageSource} 
                 style={styles.menuAvatar}
               />
 
