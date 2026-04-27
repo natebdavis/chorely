@@ -1,6 +1,7 @@
 import {
   useState, 
-  useEffect
+  useEffect,
+  useCallback
 } from "react"; 
 import {
   View, 
@@ -19,7 +20,7 @@ import {
   ImageBackground
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 //const API_URL = "https://chorely-beta-release.onrender.com";
 //const API_URL = "http://10.0.0.7:8000"
 const API_URL = "http://127.0.0.1:8000"
@@ -125,10 +126,15 @@ const fetchMembers = async () => {
     }
   };
 
-  useEffect(() => {
-  fetchMembers();
-  fetchHouseholdInfo();
-}, [token]);
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        fetchMembers();
+        fetchHouseholdInfo();
+        fetchOwnerStatus();
+      }
+    }, [token]) 
+  );
 
   const handleCreateHousehold = async () => {
     try {
@@ -310,6 +316,65 @@ const handleRemoveMember = (member: Member) => {
   );
 };
 
+
+const handleTransferOwnership = (member: Member) => {
+  if (!token) {
+    Alert.alert("Error", "Please log in again.");
+    return;
+  }
+
+  Alert.alert(
+    "Transfer Ownership",
+    `Are you sure you want to make ${member.fname} ${member.lname} the household owner?`,
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Transfer",
+        style: "default",
+        onPress: async () => {
+          try {
+            setLoading(true);
+
+            const response = await fetch(`${API_URL}/households/transfer-ownership`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                new_owner_userid: member.userid,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              Alert.alert("Error", data.detail || "Failed to transfer ownership.");
+              return;
+            }
+
+            Alert.alert("Success", data.message || "Ownership transferred successfully.");
+
+            setIsOwner(false);
+
+            await fetchMembers();
+            await fetchHouseholdInfo();
+            await fetchOwnerStatus();
+          } catch (error) {
+            console.log("Transfer ownership error:", error);
+            Alert.alert("Error", "Something went wrong while transferring ownership.");
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+    ]
+  );
+};
+
   
 const showMember = ({ item }: { item: Member }) => {
   const isCurrentUser = item.userid === user?.userid;
@@ -326,13 +391,23 @@ const showMember = ({ item }: { item: Member }) => {
       </View>
 
       {isOwner && !isCurrentUser && (
-        <TouchableOpacity
-          style={styles.removeMemberButton}
-          onPress={() => handleRemoveMember(item)}
-          disabled={loading}
-        >
-          <Text style={styles.removeMemberButtonText}>Remove</Text>
-        </TouchableOpacity>
+        <View style={styles.memberActions}>
+          <TouchableOpacity
+            style={styles.transferOwnerButton}
+            onPress={() => handleTransferOwnership(item)}
+            disabled={loading}
+          >
+            <Text style={styles.transferOwnerButtonText}>Make Owner</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.removeMemberButton}
+            onPress={() => handleRemoveMember(item)}
+            disabled={loading}
+          >
+            <Text style={styles.removeMemberButtonText}>Remove</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -419,6 +494,30 @@ const showMember = ({ item }: { item: Member }) => {
       setInvitingUserId(null);
     }
   };
+
+
+  const fetchOwnerStatus = async () => {
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${API_URL}/households/owner-status`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setIsOwner(data.is_owner);
+    } else {
+      setIsOwner(false);
+    }
+  } catch (error) {
+    console.log("Owner status error:", error);
+    setIsOwner(false);
+  }
+};
 
 
   return (
@@ -1108,9 +1207,25 @@ removeMemberButton: {
   paddingHorizontal: 12,
   borderRadius: 8,
 },
-
 removeMemberButtonText: {
   color: "#ff4444",
+  fontWeight: "bold",
+  fontSize: 13,
+},
+memberActions: {
+  alignItems: "flex-end",
+  gap: 8,
+},
+transferOwnerButton: {
+  backgroundColor: "transparent",
+  borderWidth: 1,
+  borderColor: "#2b75d5",
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 8,
+},
+transferOwnerButtonText: {
+  color: "#2b75d5",
   fontWeight: "bold",
   fontSize: 13,
 },
