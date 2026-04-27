@@ -68,6 +68,7 @@ export default function ChoreBoard() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [weekOffset, setWeekOffset] = useState(0);
+  const [overdueOnly, setOverdueOnly] = useState(false);
 
   const getWeekDates = useCallback((offset: number): Date[] => {
     const today = new Date();
@@ -90,7 +91,13 @@ export default function ChoreBoard() {
   const weekDates = getWeekDates(weekOffset);
   const today = new Date();
 
-  const filteredChores = selectedDate
+  const filteredChores = overdueOnly
+    ? chores.filter((c) => {
+        if (!c.dueDateTimestamp) return false;
+        if (c.status === "COMPLETE") return false;
+        return new Date(c.dueDateTimestamp) < new Date();
+      })
+    : selectedDate
     ? chores.filter((c) => {
         if (!c.dueDateTimestamp) return false;
         const choreDate = new Date(c.dueDateTimestamp);
@@ -288,7 +295,9 @@ export default function ChoreBoard() {
               
           </View>
            <Text style={styles.title}>
-            {selectedDate
+            {overdueOnly
+              ? "Overdue Chores"
+              : selectedDate
               ? isSameDay(selectedDate, today)
                 ? "Today's Chores"
                 : selectedDate.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })
@@ -310,10 +319,16 @@ export default function ChoreBoard() {
               <Text style={styles.navArrowText}>›</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setSelectedDate(null)}
-              style={[styles.allButton, !selectedDate && styles.allButtonActive]}
+              onPress={() => { setSelectedDate(null); setOverdueOnly(false); }}
+              style={[styles.allButton, !selectedDate && !overdueOnly && styles.allButtonActive]}
             >
               <Text style={styles.allButtonText}>All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => { setOverdueOnly((v) => !v); setSelectedDate(null); }}
+              style={[styles.allButton, overdueOnly && styles.overdueButtonActive]}
+            >
+              <Text style={styles.allButtonText}>Overdue</Text>
             </TouchableOpacity>
           </View>
 
@@ -325,11 +340,12 @@ export default function ChoreBoard() {
                 <TouchableOpacity
                   key={i}
                   style={[styles.dayCell, isSelected && styles.dayCellSelected]}
-                  onPress={() =>
+                  onPress={() => {
+                    setOverdueOnly(false);
                     setSelectedDate((prev) =>
                       prev && isSameDay(prev, date) ? null : date
-                    )
-                  }
+                    );
+                  }}
                 >
                   <Text style={[styles.dayLabel, isSelected && styles.dayLabelSelected]}>
                     {DAY_LABELS[date.getDay()]}
@@ -367,10 +383,16 @@ export default function ChoreBoard() {
         ) : filteredChores.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>
-              {selectedDate ? "No chores on this day" : "No chores yet"}
+              {overdueOnly
+                ? "No overdue chores"
+                : selectedDate
+                ? "No chores on this day"
+                : "No chores yet"}
             </Text>
             <Text style={styles.emptyText}>
-              {selectedDate
+              {overdueOnly
+                ? "Nothing's past due — nice."
+                : selectedDate
                 ? "Try selecting a different date or tap All to see everything."
                 : "Create a chore to get started."}
             </Text>
@@ -732,6 +754,9 @@ const styles = StyleSheet.create({
   },
   allButtonActive: {
     backgroundColor: "#4A90E2",
+  },
+  overdueButtonActive: {
+    backgroundColor: "#E14B4B",
   },
   allButtonText: {
     color: "#fff",
