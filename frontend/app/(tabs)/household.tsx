@@ -710,29 +710,6 @@ const showMember = ({ item }: { item: Member }) => {
 
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => setShowSettingDropdown((prev) => !prev)}
-            >
-              <Ionicons name="settings-outline" size={20} color="#fff" />
-              <Text style={styles.menuText}>Edit Profile</Text>
-              <View style={{ marginLeft: "auto" }}>
-                <Ionicons
-                  name={showSettingDropdown ? "chevron-up-outline" : "chevron-down-outline"}
-                  size={18}
-                  color="#fff"
-                />
-              </View>
-            </TouchableOpacity>
-            
-            {showSettingDropdown && (
-              <View style={styles.profileDropdown}>
-                <Text style={styles.profileDetail}>
-                  <Text style={styles.profileLabel}>Change Password </Text>
-                </Text>
-              </View>
-            )}
-
-            <TouchableOpacity
-              style={styles.menuItem}
               onPress={() => {
               setMenuVisible(false);
               router.push("/");
@@ -747,7 +724,7 @@ const showMember = ({ item }: { item: Member }) => {
               style={styles.menuItem}
               onPress={() => setShowHomeDropdown((prev) => !prev)}
             >
-              <Ionicons name="home" size={20} color="#fff" />
+              <Ionicons name="people" size={20} color="#fff" />
               <Text style={styles.menuText}>Household</Text>
               <View style={{ marginLeft: "auto" }}>
                 <Ionicons

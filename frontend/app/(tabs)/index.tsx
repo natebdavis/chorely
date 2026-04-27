@@ -666,7 +666,7 @@ const handleUpdatePassword = async () => {
                 router.push("/household");
                 }}
               >
-              <Ionicons name="home" size={20} color="#fff" />
+              <Ionicons name="people" size={20} color="#fff" />
               <Text style={styles.menuText}>Household</Text>
               </TouchableOpacity>
 
