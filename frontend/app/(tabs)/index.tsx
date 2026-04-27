@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -509,7 +511,16 @@ const handleDeleteProfilePic = async () => {
           style={styles.modalOverlay}
           onPress={() => setMenuVisible(false)}
         >
-          <View style={styles.menuContainer}>
+          <KeyboardAvoidingView
+            style={styles.menuContainer}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={20}
+          >
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.menuScrollContent}
+            >
 
             <View style={styles.menuHeader}>
               <TouchableOpacity onPress={handleUploadProfilePic} style={styles.menuAvatarWrapper}>
@@ -741,7 +752,8 @@ const handleDeleteProfilePic = async () => {
               <Ionicons name="log-out-outline" size={20} color="#ff8080" />
               <Text style={[styles.menuText, { color: "#ff8080" }]}>Logout</Text>
             </TouchableOpacity>
-          </View>
+            </ScrollView>
+          </KeyboardAvoidingView>     
         </Pressable>
       </Modal>
     </ImageBackground>
@@ -1062,5 +1074,8 @@ updatePasswordButton: {
   borderRadius: 8,
   alignSelf: "center",
   marginTop: 6,
+},
+menuScrollContent: {
+  paddingBottom: 80,
 },
 });
