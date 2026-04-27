@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = "https://chorely-beta-release.onrender.com";
+//const API_URL = "https://chorely-beta-release.onrender.com";
+const API_URL = "https://chorely-final-1v-release.onrender.com";
 
 type AuthUser = {
   userid: number | null;

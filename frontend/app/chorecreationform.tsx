@@ -15,7 +15,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { useAuth } from "../components/AuthContext";
 
-const API_URL = "https://chorely-beta-release.onrender.com";
+//const API_URL = "https://chorely-beta-release.onrender.com";
+const API_URL = "https://chorely-final-1v-release.onrender.com";
 
 type Member = {
   userid: number;
