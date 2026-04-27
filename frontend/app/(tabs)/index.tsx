@@ -54,7 +54,7 @@ function formatISODate(isoString: string | null) {
 }
 
 export default function ChoreBoard() {
-  const {user, logout,updateProfilePic } = useAuth();
+  const {user, logout, updateProfilePic } = useAuth();
   const username = user?.username ?? "User";
   const userId = user?.userid ?? "N/A";
   const phone = user?.phone_num ?? "N/A"; 
@@ -330,6 +330,32 @@ const handleUpdatePassword = async () => {
     Alert.alert("Error", "Something went wrong.");
   }finally {
     setIsUpdatingPassword(false); 
+  }
+};
+
+const handleDeleteProfilePic = async () => {
+  if (!user?.token) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/user/delete-profile-pic`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      Alert.alert("Error", data.detail || "Failed to delete profile picture.");
+      return;
+    }
+
+    updateProfilePic(null);
+    Alert.alert("Success", "Profile picture removed.");
+  } catch (error) {
+    console.log("Delete profile picture error:", error);
+    Alert.alert("Error", "Something went wrong.");
   }
 };
 
@@ -645,6 +671,16 @@ const handleUpdatePassword = async () => {
                       </TouchableOpacity>
                     </View>
                   )}
+
+                  <TouchableOpacity
+                    style={styles.changePasswordButton}
+                    onPress={handleDeleteProfilePic}
+                  >
+                    <Text style={[styles.profileLabel, { color: "#ff8080" }]}>
+                      Delete Profile Picture
+                    </Text>
+                  </TouchableOpacity>
+                
                 </View>
               )}
 
