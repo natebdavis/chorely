@@ -47,7 +47,7 @@ export default function Household() {
   const [householdid, setHouseholdid] = useState<string | null>(null);
   const [memberCount, setMemberCount] = useState<number | null>(null);
 
-  const {user, logout } = useAuth(); //get the 'user' object from useAuth instead of 'token' directly
+  const {user, logout, refreshUser } = useAuth(); //get the 'user' object from useAuth instead of 'token' directly
   const token = user?.token; //grab the token from the user object
 
   //new UI 
@@ -165,6 +165,8 @@ const fetchMembers = async () => {
       setMemberCount(data.member_count);
       setHasHousehold(true);
 
+      await refreshUser();
+
       Alert.alert(
         "Success",
         `Household created successfully.\nHousehold ID: ${data.householdid}\nMembers: ${data.member_count}`
@@ -253,6 +255,8 @@ const handleJoinHousehold = async () => {
     setMemberCount(null);
     setIsAddingUser(false);
     setJoinUserId("");
+
+    await refreshUser();
   } catch (error) {
     console.log("Leave household error:", error);
     Alert.alert("Error", "Something went wrong while leaving the household.");
