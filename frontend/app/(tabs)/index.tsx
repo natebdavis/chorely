@@ -38,7 +38,8 @@ type Member = {
 };
 
 //const API_BASE = "https://chorely-beta-release.onrender.com";
-const API_BASE = "http://127.0.0.1:8000"
+//const API_BASE = "http://127.0.0.1:8000"
+const API_BASE = "https://chorely-final-1v-release.onrender.com"
 
 function formatISODate(isoString: string | null) {
   if (!isoString) return "Unknown";

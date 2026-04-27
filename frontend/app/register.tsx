@@ -39,7 +39,8 @@ export default function Register() {
   const cleanedPhoneForCheck = phoneNum.replace(/\D/g, "");
   const isPhoneValid = phoneNum.length === 0 || cleanedPhoneForCheck.length === 10;
 
-  const API_URL = "https://chorely-beta-release.onrender.com";
+  //const API_URL = "https://chorely-beta-release.onrender.com";
+  const API_URL = "https://chorely-final-1v-release.onrender.com";
   
   //this makes the phone number appear like (XXX)-XXX-XXXX
     const formatPhoneNumber = (text: string) => {

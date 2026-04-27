@@ -23,7 +23,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 //const API_URL = "https://chorely-beta-release.onrender.com";
 //const API_URL = "http://10.0.0.7:8000"
-const API_URL = "http://127.0.0.1:8000"
+//const API_URL = "http://127.0.0.1:8000"
+const API_URL = "https://chorely-final-1v-release.onrender.com"
 
 import { useAuth } from "../../components/AuthContext";
 
