@@ -9,6 +9,7 @@ import {
   Pressable,
   TouchableOpacity,
   Alert,
+  TextInput,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -70,6 +71,16 @@ export default function ChoreBoard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [weekOffset, setWeekOffset] = useState(0);
   const [overdueOnly, setOverdueOnly] = useState(false);
+
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const getWeekDates = useCallback((offset: number): Date[] => {
     const today = new Date();
@@ -270,6 +281,55 @@ export default function ChoreBoard() {
   } catch (error) {
     console.log("Upload profile picture error:", error);
     Alert.alert("Error", "Something went wrong while uploading.");
+  }
+};
+
+const handleUpdatePassword = async () => {
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    Alert.alert("Error", "All fields are required.");
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    Alert.alert("Error", "New passwords do not match.");
+    return;
+  }
+
+  setIsUpdatingPassword(true);
+
+  try {
+    const response = await fetch(`${API_BASE}/user/update-password`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user?.token}`,
+      },
+      body: JSON.stringify({
+        old_password: oldPassword,
+        new_password: newPassword,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      Alert.alert("Error", data.detail || "Failed to update password");
+      return;
+    }
+
+    Alert.alert("Success", "Password updated successfully!");
+
+    // reset fields
+    setOldPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowPasswordForm(false);
+
+  } catch (error) {
+    console.log("Update password error:", error);
+    Alert.alert("Error", "Something went wrong.");
+  }finally {
+    setIsUpdatingPassword(false); 
   }
 };
 
@@ -499,10 +559,92 @@ export default function ChoreBoard() {
             
             {showSettingDropdown && (
                 <View style={styles.profileDropdown}>
-                  <Text style={styles.profileDetail}>
-                    <Text style={styles.profileLabel}>Change Password </Text>
-                  </Text>
+                  <TouchableOpacity
+                    style={styles.changePasswordButton}
+                    onPress={() => setShowPasswordForm((prev) => !prev)}
+                  >
+                    <Text style={styles.profileLabel}>Change Password</Text>
+                  </TouchableOpacity>
 
+                  {showPasswordForm && (
+                    <View style={styles.passwordForm}>
+                      {/* Current Password */}
+                      <View style={styles.inputContainer}>
+                        <TextInput
+                          placeholder="Current Password"
+                          secureTextEntry={!showOldPassword}
+                          value={oldPassword}
+                          onChangeText={setOldPassword}
+                          style={styles.input}
+                          placeholderTextColor="#888"
+                        />
+
+                        <TouchableOpacity
+                          style={styles.eyeIcon}
+                          onPress={() => setShowOldPassword((prev) => !prev)}
+                        >
+                          <Ionicons
+                            name={showOldPassword ? "eye-off-outline" : "eye-outline"}
+                            size={20}
+                            color="#888"
+                          />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* New Password */}
+                      <View style={styles.inputContainer}>
+                        <TextInput
+                          placeholder="New Password"
+                          secureTextEntry={!showNewPassword}
+                          value={newPassword}
+                          onChangeText={setNewPassword}
+                          style={styles.input}
+                          placeholderTextColor="#888"
+                        />
+
+                        <TouchableOpacity
+                          style={styles.eyeIcon}
+                          onPress={() => setShowNewPassword((prev) => !prev)}
+                        >
+                          <Ionicons
+                            name={showNewPassword ? "eye-off-outline" : "eye-outline"}
+                            size={20}
+                            color="#888"
+                          />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Confirm Password */}
+                      <View style={styles.inputContainer}>
+                        <TextInput
+                          placeholder="Confirm New Password"
+                          secureTextEntry={!showConfirmPassword}
+                          value={confirmPassword}
+                          onChangeText={setConfirmPassword}
+                          style={styles.input}
+                          placeholderTextColor="#888"
+                        />
+
+                        <TouchableOpacity
+                          style={styles.eyeIcon}
+                          onPress={() => setShowConfirmPassword((prev) => !prev)}
+                        >
+                          <Ionicons
+                            name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                            size={20}
+                            color="#888"
+                          />
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.updatePasswordButton}
+                        onPress={handleUpdatePassword}
+                      >
+                        <Text style={styles.buttonText}>{isUpdatingPassword ? "Updating..." : "Update Password"}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -836,5 +978,53 @@ menuEditPencil: {
   justifyContent: "center",
   borderWidth: 2,
   borderColor: "#1C1C1E",
+},
+ buttonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+button: {
+  backgroundColor: "#2b75d5",
+  paddingVertical: 8,
+  paddingHorizontal: 14,
+  borderRadius: 8,
+},
+changePasswordButton: {
+  paddingBottom: 14,
+},
+passwordForm: {
+  width: "100%",
+},
+inputContainer: {
+  position: "relative",
+  justifyContent: "center",
+  width: "100%",
+},
+input: {
+  backgroundColor: "#121212",
+  color: "white",
+  paddingHorizontal: 16,
+  paddingVertical: 14,
+  borderRadius: 12,
+  fontSize: 16,
+  borderWidth: 1,
+  borderColor: "#333",
+  marginBottom: 12,
+  paddingRight: 45,
+  width: "100%",
+},
+eyeIcon: {
+  position: "absolute",
+  right: 15,
+  top: 15,
+},
+updatePasswordButton: {
+  backgroundColor: "#2b75d5",
+  paddingVertical: 10,
+  paddingHorizontal: 18,
+  borderRadius: 8,
+  alignSelf: "center",
+  marginTop: 6,
 },
 });
