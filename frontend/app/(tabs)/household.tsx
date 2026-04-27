@@ -37,7 +37,8 @@ interface Member {
 export default function Household() {
   const [loading, setLoading] = useState(false);
   const [hasHousehold, setHasHousehold] = useState(false);
-  const [members, setMembers] = useState([]);
+  const [members, setMembers] = useState<Member[]>([]);
+
   const [joinUserId, setJoinUserId] = useState("");
   const [isAddingUser, setIsAddingUser] = useState(false);
 
@@ -62,6 +63,7 @@ export default function Household() {
   const [searchResults, setSearchResults] = useState<Member[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [invitingUserId, setInvitingUserId] = useState<number | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   const profileImageSource = user?.profile_url
   ? { uri: user.profile_url }
@@ -82,6 +84,14 @@ const fetchMembers = async () => {
         const data = await response.json();
         setMembers(data);
         setHasHousehold(true); //shows the list if user is in household
+
+        const owner = data[0]; 
+        if (owner && owner.userid === user?.userid) {
+          setIsOwner(true);
+        } else {
+          setIsOwner(false);
+        }
+
       } else {
         setHasHousehold(false);
       }
@@ -244,13 +254,89 @@ const handleJoinHousehold = async () => {
   }
 };
 
+
+const handleRemoveMember = (member: Member) => {
+  if (!token) {
+    Alert.alert("Error", "Please log in again.");
+    return;
+  }
+
+  Alert.alert(
+    "Remove Member",
+    `Are you sure you want to remove ${member.fname} ${member.lname} from the household?`,
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setLoading(true);
+
+            const response = await fetch(`${API_URL}/households/remove`, {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                userid: member.userid,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              Alert.alert("Error", data.detail || "Failed to remove member.");
+              return;
+            }
+
+            Alert.alert("Success", data.message || "User removed successfully.");
+
+            await fetchMembers();
+            await fetchHouseholdInfo();
+          } catch (error) {
+            console.log("Remove member error:", error);
+            Alert.alert("Error", "Something went wrong while removing the member.");
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+    ]
+  );
+};
+
   
-  const showMember = ({ item }: { item: Member }) => (
+const showMember = ({ item }: { item: Member }) => {
+  const isCurrentUser = item.userid === user?.userid;
+
+  return (
     <View style={styles.memberCard}>
-      <Text style={styles.memberName}>{item.fname} {item.lname}</Text>
-      <Text style={styles.memberDetails}>Username: {item.username}</Text>
+      <View style={styles.memberInfo}>
+        <Text style={styles.memberName}>
+          {item.fname} {item.lname}
+          {isCurrentUser ? " (You)" : ""}
+        </Text>
+
+        <Text style={styles.memberDetails}>Username: {item.username}</Text>
+      </View>
+
+      {isOwner && !isCurrentUser && (
+        <TouchableOpacity
+          style={styles.removeMemberButton}
+          onPress={() => handleRemoveMember(item)}
+          disabled={loading}
+        >
+          <Text style={styles.removeMemberButtonText}>Remove</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
+};
 
 
   const handleSearchUsers = async (query: string) => {
@@ -671,6 +757,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#333",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   memberName: {
     color: "#000000",
@@ -1005,5 +1094,24 @@ searchResultsWrapper: {
 
 searchResultsScroll: {
   width: "100%",
+},
+memberInfo: {
+  flex: 1,
+  paddingRight: 10,
+},
+
+removeMemberButton: {
+  backgroundColor: "transparent",
+  borderWidth: 1,
+  borderColor: "#ff4444",
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 8,
+},
+
+removeMemberButtonText: {
+  color: "#ff4444",
+  fontWeight: "bold",
+  fontSize: 13,
 },
   });
