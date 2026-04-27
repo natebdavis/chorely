@@ -330,6 +330,36 @@ const handleDeleteSentInvite = async (inviteid: number) => {
   );
 };
 
+const handleMarkAsRead = async (notificationid: number) => {
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${API_URL}/notifications/${notificationid}/read`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.notificationid === notificationid
+            ? { ...item, is_read: true }
+            : item
+        )
+      );
+    } else {
+      Alert.alert("Error", data.detail || "Failed to mark notification as read.");
+    }
+  } catch (error) {
+    console.log("Mark as read error:", error);
+    Alert.alert("Error", "Something went wrong.");
+  }
+};
+
   return (
     <ImageBackground
       source={require("../../assets/images/background.png")}
@@ -441,7 +471,10 @@ const handleDeleteSentInvite = async (inviteid: number) => {
           </View>
        ) : (
     notifications.map((item) => (
-      <View key={item.notificationid} style={styles.notificationCard}>
+        <View key={item.notificationid} style={[
+          styles.notificationCard,
+          item.is_read && styles.readNotificationCard,
+        ]}>
         
        <View style={styles.notificationHeader}>
           <Text style={styles.notificationTitle}>{item.title}</Text>
@@ -456,6 +489,15 @@ const handleDeleteSentInvite = async (inviteid: number) => {
 
         <Text style={styles.notificationMessage}>{item.message}</Text>
         <Text style={styles.timeText}>{formatTime(item.time)}</Text>
+
+        {!item.is_read && (
+          <TouchableOpacity
+            style={styles.markReadButton}
+            onPress={() => handleMarkAsRead(item.notificationid)}
+          >
+            <Text style={styles.markReadButtonText}>Mark as Read</Text>
+          </TouchableOpacity>
+)}
 
         {item.type === "INVITE" && item.reference_id !== null && inviteStatuses[item.reference_id] === "PENDING" ? (
         
@@ -875,5 +917,23 @@ notificationList: {
 },
 notificationListContent: {
   paddingBottom: 20,
+},
+readNotificationCard: {
+  opacity: 0.7,
+},
+
+markReadButton: {
+  marginTop: 10,
+  alignSelf: "flex-start",
+  backgroundColor: "#4A90E2",
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 8,
+},
+
+markReadButtonText: {
+  color: "white",
+  fontWeight: "700",
+  fontSize: 13,
 },
 });
