@@ -126,16 +126,16 @@ export default function ChoreBoard() {
 
   const handleStatusChange = async (choreId: string, newStatus: string, assigneeId?: number | null) => {
     try {
+      const body: { status: string; assignee_id?: number | null } = { status: newStatus };
+      if (assigneeId !== undefined) body.assignee_id = assigneeId;
+
       const response = await fetch(`${API_BASE}/chores/${choreId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${user?.token}`,
         },
-        body: JSON.stringify({
-          status: newStatus,
-          assignee_id: assigneeId ?? null,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 290,
+    paddingTop: 310,
     paddingBottom: 110,
   },
   title: {
