@@ -725,9 +725,6 @@ const showMember = ({ item }: { item: Member }) => {
             {showSettingDropdown && (
               <View style={styles.profileDropdown}>
                 <Text style={styles.profileDetail}>
-                  <Text style={styles.profileLabel}>Change Username </Text>
-                </Text>
-                <Text style={styles.profileDetail}>
                   <Text style={styles.profileLabel}>Change Password </Text>
                 </Text>
               </View>
@@ -1228,5 +1225,19 @@ transferOwnerButtonText: {
   color: "#2b75d5",
   fontWeight: "bold",
   fontSize: 13,
+},
+memberAvatar: {
+  width: 52,
+  height: 52,
+  borderRadius: 26,
+  backgroundColor: "#413f3f",
+  borderColor: "#000000",
+  borderWidth: 1,
+  marginRight: 12,
+},
+memberLeft: {
+  flexDirection: "row",
+  alignItems: "center",
+  flex: 1,
 },
   });

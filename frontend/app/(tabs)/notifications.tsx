@@ -571,13 +571,8 @@ const handleDeleteSentInvite = async (inviteid: number) => {
             {showSettingDropdown && (
                 <View style={styles.profileDropdown}>
                   <Text style={styles.profileDetail}>
-                    <Text style={styles.profileLabel}>Change Username </Text>
-                  </Text>
-
-                  <Text style={styles.profileDetail}>
                     <Text style={styles.profileLabel}>Change Password </Text>
                   </Text>
-
                 </View>
               )}
 
