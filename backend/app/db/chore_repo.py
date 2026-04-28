@@ -1,3 +1,8 @@
+"""
+Module for chore-related database operations.
+
+Contributors: Edmund Krajewski, Gilligan Berlinski
+"""
 from collections.abc import Iterable
 from typing import Union, Optional
 from datetime import datetime, timedelta
@@ -21,12 +26,6 @@ from app.db.client import get_client
 from app.user import UserResponse, search_user
 from app.db.user_repo import get_user, get_users
 from app.utils import Weekday, DateFilter
-
-"""
-Module for chore-related database operations.
-
-Contributors: Edmund Krajewski, Gilligan Berlinski
-"""
 
 first = 0
 

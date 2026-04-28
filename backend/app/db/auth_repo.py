@@ -1,3 +1,9 @@
+"""
+Module for authentication-related database helpers.
+
+Contributors: Edmund Krajewski, Gilligan Berlinski
+"""
+
 from typing import Union
 
 from fastapi import Depends
@@ -12,13 +18,6 @@ from app.utils import (
     credentials_exception,
     verify_password,
 )
-
-"""
-Module for authentication-related database helpers.
-
-Contributors: Edmund Krajewski, Gilligan Berlinski
-"""
-
 
 async def get_current_user(
     client: Client = Depends(get_client),

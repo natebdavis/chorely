@@ -1,3 +1,8 @@
+"""
+Module for user-related database operations.
+
+Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
+"""
 from collections.abc import Iterable
 from typing import Union
 
@@ -15,12 +20,6 @@ from app.user import (
 )
 from app.chore import CHORE_TABLE_NAME, Chore_Col_Name
 from app.utils import verify_password, get_password_hash, BUCKET
-
-"""
-Module for user-related database operations.
-
-Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
-"""
 
 first = 0
 
@@ -308,6 +307,9 @@ def get_profile_pic_url(userid: int, client: Union[Client, None] = None) -> Unio
     return UserProfilePicResponse(url=signed["signedURL"])
 
 def delete_profile_pic(userid: int, client: Union[Client, None] = None) -> bool:
+    """
+    Delete a user's profile picture from Supabase storage and update the user's profile URL in the database to null.
+    """
 
     if client is None:
         client = get_client()
@@ -468,6 +470,12 @@ def update_chore_reminder_hours_before_due(
     chore_reminder_hours_before_due: int,
     client: Union[Client, None] = None,
 ) -> Union[UserResponse, None]:
+    """
+    Update a user's chore reminder hours before due.
+    
+    Output:
+        The updated user response, or None if the update fails.
+    """
     if client is None:
         client = get_client()
 

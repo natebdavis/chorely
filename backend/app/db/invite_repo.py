@@ -1,3 +1,9 @@
+"""
+This module contains functions for interacting with the invites table in the database.
+The functions in this module allow you to create, retrieve, and update invites for users and households.
+
+Contributers: Edmund Krajewski
+"""
 from collections.abc import Iterable
 from typing import Union
 
@@ -20,6 +26,13 @@ def get_invite(
     inviteid: int,
     client: Union[Client, None] = None,
 ) -> Union[InviteResponse, None]:
+    """
+    Get an invite by its inviteid.
+
+    Output:
+        An InviteResponse object if the invite exists, or None if it does not exist.
+    """
+
     if client is None:
         client = get_client()
 
@@ -42,6 +55,13 @@ def get_user_invites(
     userid: int,
     client: Union[Client, None] = None,
 ) -> Iterable[InviteResponse]:
+    """
+    Get all invites for a user, including both pending and responded invites.
+    
+    Output:
+        A list of InviteResponse objects for the user, ordered by created_at in descending order.
+    """
+
     if client is None:
         client = get_client()
 
@@ -62,6 +82,13 @@ def get_user_pending_invites(
     userid: int,
     client: Union[Client, None] = None,
 ) -> Iterable[InviteResponse]:
+    """
+    Get all pending invites for a user.
+
+    Output:
+        A list of InviteResponse objects for the user, ordered by created_at in descending order.
+    """
+
     if client is None:
         client = get_client()
 
@@ -83,6 +110,12 @@ def get_outgoing_pending_invites(
     inviter_userid: int,
     client: Union[Client, None] = None,
 ) -> Iterable[InviteResponse]:
+    """
+    Get all pending invites sent by a user.
+    
+    Output:
+        A list of InviteResponse objects for the user, ordered by created_at in descending order.
+    """
     if client is None:
         client = get_client()
 
@@ -105,6 +138,12 @@ def get_pending_invite_for_household_user(
     invitee_userid: int,
     client: Union[Client, None] = None,
 ) -> Union[InviteResponse, None]:
+    """
+    Get a pending invite for a user to join a household.
+
+    Output:
+        An InviteResponse object if a pending invite exists for the user to join the household, or None if no such invite exists.
+    """
     if client is None:
         client = get_client()
 
@@ -130,6 +169,13 @@ def create_invite(
     invite: InviteCreateRequest,
     client: Union[Client, None] = None,
 ) -> Union[InviteResponse, None]:
+    """
+    Create a new invite for a user to join a household.
+
+    Output:
+        An InviteResponse object for the newly created invite, or None if the invite could not be created.
+    """
+
     if client is None:
         client = get_client()
 
@@ -156,6 +202,12 @@ def update_invite_status(
     responded_at: str,
     client: Union[Client, None] = None,
 ) -> Union[InviteResponse, None]:
+    """
+    Update the status of an invite.
+    
+    Output:
+        An InviteResponse object for the updated invite, or None if the invite could not be updated.
+    """
     if client is None:
         client = get_client()
 
@@ -185,6 +237,13 @@ def cancel_pending_invites_for_user(
     exclude_inviteid: Union[int, None] = None,
     client: Union[Client, None] = None,
 ) -> Iterable[InviteResponse]:
+    """
+    Cancel all pending invites for a user, except for an optional inviteid to exclude from cancellation.
+    
+    Output:
+    A list of InviteResponse objects for the invites that were canceled, ordered by created_at in
+    descending order.
+    """
     if client is None:
         client = get_client()
 

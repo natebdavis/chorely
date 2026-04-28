@@ -1,3 +1,9 @@
+"""
+Module for recurring chore template-related database operations.
+
+Contributors: Edmund Krajewski
+"""
+
 from collections.abc import Iterable
 from typing import Union
 
@@ -12,12 +18,6 @@ from app.chore_template import (
     create_ChoreTemplateResponse,
 )
 from app.db.client import get_client
-
-"""
-Module for recurring chore template-related database operations.
-
-Contributors: Edmund Krajewski
-"""
 
 first = 0
 

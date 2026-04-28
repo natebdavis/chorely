@@ -1,3 +1,9 @@
+"""
+Module for household-related database operations.
+
+Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
+"""
+
 from typing import Union
 
 from supabase import Client
@@ -13,12 +19,6 @@ from app.household import HOUSEHOLD_TABLE_NAME, Household_Col_Name
 from app.user import USER_TABLE_NAME, User_Col_Name, UserResponse, create_UserResponse
 from app.chore import CHORE_TABLE_NAME, Chore_Col_Name
 from app.invite import INVITE_TABLE_NAME, Invite_Col_Name
-
-"""
-Module for household-related database operations.
-
-Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
-"""
 
 first = 0
 

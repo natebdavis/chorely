@@ -1,3 +1,7 @@
+"""
+Module for notification database operations.
+Contributors: Edmund Krajewski
+"""
 from supabase import Client
 from typing import Optional, List
 
@@ -11,6 +15,12 @@ from app.notification import (
 
 
 def get_notifications(userid: int, client: Optional[Client] = None) -> List[NotificationResponse]:
+    """
+    Get all notifications for a user, ordered by time in descending order.
+    
+    Output:
+        A list of NotificationResponse objects for the user.
+    """
     if client is None:
         client = get_client()
 
@@ -27,6 +37,12 @@ def get_notifications(userid: int, client: Optional[Client] = None) -> List[Noti
 
 
 def get_notification(notificationid: int, client: Optional[Client] = None) -> Optional[NotificationResponse]:
+    """
+    Get a notification by its notificationid.
+    
+    Output:
+        A NotificationResponse object if the notification exists, or None if it does not exist.
+    """
     if client is None:
         client = get_client()
 
@@ -45,6 +61,12 @@ def get_notification(notificationid: int, client: Optional[Client] = None) -> Op
 
 
 def add_notification(notification: Notification, client: Optional[Client] = None) -> Optional[NotificationResponse]:
+    """
+    Add a new notification to the database.
+    
+    Output:
+        A NotificationResponse object for the newly created notification, or None if the notification could not be created.
+    """
     if client is None:
         client = get_client()
 
@@ -57,6 +79,12 @@ def add_notification(notification: Notification, client: Optional[Client] = None
 
 
 def create_notification(notification: NotificationCreateRequest, client: Optional[Client] = None) -> Optional[NotificationResponse]:
+    """
+    Create a new notification in the database from a NotificationCreateRequest object.
+    
+    Output:
+        A NotificationResponse object for the newly created notification, or None if the notification could not be created.
+    """
     if client is None:
         client = get_client()
 
@@ -74,6 +102,12 @@ def create_notification(notification: NotificationCreateRequest, client: Optiona
 
 
 def mark_notification_read(notificationid: int, client: Optional[Client] = None) -> Optional[NotificationResponse]:
+    """
+    Mark a notification as read.
+    
+    Output:
+        A NotificationResponse object for the updated notification, or None if the notification could not be updated.
+    """
     if client is None:
         client = get_client()
 
@@ -92,6 +126,12 @@ def mark_notification_read(notificationid: int, client: Optional[Client] = None)
 
 
 def remove_notification(notificationid: int, client: Optional[Client] = None) -> bool:
+    """
+    Remove a notification from the database.
+    
+    Output:
+        True if the notification was removed, False otherwise.
+    """
     if client is None:
         client = get_client()
 
@@ -111,6 +151,12 @@ def notification_exists(
     notification_type: str,
     client: Optional[Client] = None,
 ) -> bool:
+    """
+    Check if a notification exists for a user with a given reference_id and type.
+    
+    Output:
+        True if the notification exists, False otherwise.
+    """
     if client is None:
         client = get_client()
 

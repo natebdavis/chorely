@@ -1,3 +1,8 @@
+"""
+Module for chore request related database operations.
+
+Contributors: Gilligan Berlinski
+"""
 from supabase import Client
 from typing import Union, Iterable
 
@@ -7,12 +12,6 @@ from app.request import RequestStatus, create_RequestResponse, RequestResponse, 
 
 
 first = 0
-
-"""
-Module for chore request related database operations.
-
-Contributors: Gilligan Berlinski
-"""
 
 def create_request(request: RequestCreateRequest, 
                 client: Union[Client, None] = None)-> Union[RequestResponse, None]:
@@ -64,6 +63,12 @@ def create_request(request: RequestCreateRequest,
     return create_RequestResponse(data=response.data[first])
 
 def get_request(request_id: int, client: Union[Client, None] = None) -> Union[RequestResponse, None]:
+    """
+    Get a request by its request id.
+
+    Output:
+        A RequestResponse object for the request, or None if the request does not exist.
+    """
 
     if client is None:
         client = get_client()
@@ -84,6 +89,12 @@ def get_request(request_id: int, client: Union[Client, None] = None) -> Union[Re
 
 def update_request(requestid: int, request: RequestUpdateRequest, 
                    client: Union[Client, None] = None) -> Union[RequestResponse, None]:
+    """
+    Update a request's status in the database.
+
+    Output:
+        Updated request data returned as RequestResponse, or None if update failed.
+    """
     
     if client is None:
         client = get_client()
@@ -121,6 +132,13 @@ def update_request(requestid: int, request: RequestUpdateRequest,
 def get_outgoing_pending_requests(requester_id: int, 
                       client: Union[Client, None] = None) -> Union[Iterable[RequestResponse], None]:
     
+    """
+     Get all outgoing pending requests for a requester. 
+    
+    Output:
+        An iterable of RequestResponse objects for the requester's outgoing pending requests, or None if there are no outgoing pending requests.
+    """
+    
     if client is None:
         client = get_client()
 
@@ -142,6 +160,12 @@ def get_outgoing_pending_requests(requester_id: int,
 
 def get_user_requests(requestee_id: int, 
                       client: Union[Client, None] = None) -> Union[Iterable[RequestResponse], None]:
+    """
+    Get all requests for a user, including both pending and responded requests.
+    
+    Output:
+        An iterable of RequestResponse objects for the user's requests, or None if there are no requests
+    """
     if client is None:
         client = get_client()
 

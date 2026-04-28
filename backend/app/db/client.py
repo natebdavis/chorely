@@ -1,11 +1,11 @@
-from supabase import Client, create_client
-from app.utils import load_env_variables
-
 """
 Module for creating and returning the Supabase client.
 
 Contributors: Edmund Krajewski, Gilligan Berlinski
 """
+
+from supabase import Client, create_client
+from app.utils import load_env_variables
 
 client = None
 
