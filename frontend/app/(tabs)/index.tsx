@@ -13,9 +13,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { ChoreItem } from "../../components/ChoreItem";
 import type { Chore } from "../../components/ChoreContext";
 import { useAuth } from "../../components/AuthContext";
@@ -41,8 +41,8 @@ type Member = {
 };
 
 //const API_BASE = "https://chorely-beta-release.onrender.com";
-//const API_BASE = "http://127.0.0.1:8000"
 const API_BASE = "https://chorely-final-1v-release.onrender.com"
+//const API_BASE = "http://127.0.0.1:8000"
 
 function formatISODate(isoString: string | null) {
   if (!isoString) return "Unknown";
@@ -73,6 +73,7 @@ export default function ChoreBoard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [weekOffset, setWeekOffset] = useState(0);
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [completedExpanded, setCompletedExpanded] = useState(false);
 
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -119,6 +120,9 @@ export default function ChoreBoard() {
       })
     : chores;
 
+  const activeChores = filteredChores.filter((c) => c.status !== "COMPLETE");
+  const completedChores = filteredChores.filter((c) => c.status === "COMPLETE");
+
   const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
   const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -161,62 +165,108 @@ export default function ChoreBoard() {
     }
   };
 
-  useEffect(() => {
-    if (!user?.householdid) {
-      setLoading(false);
+  const handleDeleteChore = async (choreId: string) => {
+    const numericId = parseInt(choreId, 10);
+    if (isNaN(numericId)) {
+      Alert.alert("Error", "Cannot delete this chore.");
       return;
     }
 
-    async function loadChores() {
-      try {
-        const response = await fetch(`${API_BASE}/chores`, {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
+    try {
+      const response = await fetch(`${API_BASE}/chores`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
+        },
+        body: JSON.stringify({ choreid: numericId }),
+      });
 
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
-        }
+      if (response.ok) {
+        setChores((prev) => prev.filter((c) => c.id !== choreId));
+        return;
+      }
 
-        const data: BackendChore[] = await response.json();
-        setChores(
-          data.map((backendChore) => ({
-            id: String(
-              backendChore.choreid ??
-                `${backendChore.name}-${backendChore.due_date ?? "demo"}`
-            ),
-            name: backendChore.name,
-            description: backendChore.description,
-            assignedTo: backendChore.assignee ?? "Unassigned",
-            requestDate: formatISODate(backendChore.request_date),
-            dueDate: formatISODate(backendChore.due_date),
-            dueDateTimestamp: backendChore.due_date,
-            status: backendChore.status ?? "Unknown",
-          }))
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
+      const data = await response.json().catch(() => ({}));
+      Alert.alert("Error", data.detail || "Failed to delete chore.");
+    } catch (e) {
+      Alert.alert("Error", "Could not connect to the server.");
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.householdid || !user?.token) {
         setLoading(false);
+        return;
       }
-    }
 
-    async function loadMembers() {
-      try {
-        const response = await fetch(`${API_BASE}/households/members`, {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setMembers(data);
+      let cancelled = false;
+      setLoading(true);
+      setError(null);
+
+      async function loadChores() {
+        try {
+          const response = await fetch(`${API_BASE}/chores`, {
+            headers: { Authorization: `Bearer ${user?.token}` },
+          });
+
+          if (cancelled) return;
+
+          if (!response.ok) {
+            throw new Error(`Request failed with status ${response.status}`);
+          }
+
+          const data: BackendChore[] = await response.json();
+          if (cancelled) return;
+
+          setChores(
+            data.map((backendChore) => ({
+              id: String(
+                backendChore.choreid ??
+                  `${backendChore.name}-${backendChore.due_date ?? "demo"}`
+              ),
+              name: backendChore.name,
+              description: backendChore.description,
+              assignedTo: backendChore.assignee ?? "Unassigned",
+              requestDate: formatISODate(backendChore.request_date),
+              dueDate: formatISODate(backendChore.due_date),
+              dueDateTimestamp: backendChore.due_date,
+              status: backendChore.status ?? "Unknown",
+            }))
+          );
+        } catch (err) {
+          if (!cancelled) {
+            setError(err instanceof Error ? err.message : "Unknown error");
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
         }
-      } catch (e) {
-        // silently fail
       }
-    }
 
-    loadChores();
-    loadMembers();
-  }, []);
+      async function loadMembers() {
+        try {
+          const response = await fetch(`${API_BASE}/households/members`, {
+            headers: { Authorization: `Bearer ${user?.token}` },
+          });
+          if (cancelled) return;
+          if (response.ok) {
+            const data = await response.json();
+            if (!cancelled) setMembers(data);
+          }
+        } catch (e) {
+          // silently fail
+        }
+      }
+
+      loadChores();
+      loadMembers();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [user?.householdid, user?.token])
+  );
 
   const handleUploadProfilePic = async () => {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -469,7 +519,7 @@ const handleDeleteProfilePic = async () => {
             <Text style={styles.emptyTitle}>Failed to load chores</Text>
             <Text style={styles.emptyText}>{error}</Text>
           </View>
-        ) : filteredChores.length === 0 ? (
+        ) : activeChores.length === 0 && completedChores.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>
               {overdueOnly
@@ -487,17 +537,61 @@ const handleDeleteProfilePic = async () => {
             </Text>
           </View>
         ) : (
-          filteredChores.map((chore) => (
-            <ChoreItem
-              key={chore.id}
-              chore={chore}
-              onComplete={() => {}}
-              onStatusChange={handleStatusChange}
-              showDropdownFor={showDropdownFor}
-              onToggleDropdown={setShowDropdownFor}
-              members={members}
-            />
-          ))
+          <>
+            {activeChores.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>All done!</Text>
+                <Text style={styles.emptyText}>
+                  No active chores {selectedDate ? "on this day" : "right now"} — see completed below.
+                </Text>
+              </View>
+            ) : (
+              activeChores.map((chore) => (
+                <ChoreItem
+                  key={chore.id}
+                  chore={chore}
+                  onComplete={() => {}}
+                  onStatusChange={handleStatusChange}
+                  onDelete={handleDeleteChore}
+                  showDropdownFor={showDropdownFor}
+                  onToggleDropdown={setShowDropdownFor}
+                  members={members}
+                />
+              ))
+            )}
+
+            {completedChores.length > 0 && (
+              <>
+                <TouchableOpacity
+                  onPress={() => setCompletedExpanded((v) => !v)}
+                  style={styles.completedHeader}
+                >
+                  <Text style={styles.completedHeaderText}>
+                    Completed ({completedChores.length})
+                  </Text>
+                  <Ionicons
+                    name={completedExpanded ? "chevron-up" : "chevron-down"}
+                    size={20}
+                    color="#fff"
+                  />
+                </TouchableOpacity>
+
+                {completedExpanded &&
+                  completedChores.map((chore) => (
+                    <ChoreItem
+                      key={chore.id}
+                      chore={chore}
+                      onComplete={() => {}}
+                      onStatusChange={handleStatusChange}
+                      onDelete={handleDeleteChore}
+                      showDropdownFor={showDropdownFor}
+                      onToggleDropdown={setShowDropdownFor}
+                      members={members}
+                    />
+                  ))}
+              </>
+            )}
+          </>
         )}
       </ScrollView>
       
@@ -944,6 +1038,22 @@ const styles = StyleSheet.create({
   },
   overdueButtonActive: {
     backgroundColor: "#E14B4B",
+  },
+  completedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(1, 11, 31, 0.85)",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 10,
+  },
+  completedHeaderText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
   },
   allButtonText: {
     color: "#fff",

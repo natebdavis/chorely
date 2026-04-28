@@ -16,11 +16,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAuth } from "../../components/AuthContext";
 //const API_URL = "http://10.0.0.7:8000"
-//const API_URL = "http://127.0.0.1:8000"
 const API_URL = "https://chorely-final-1v-release.onrender.com"
+//const API_URL = "http://127.0.0.1:8000"
 
 export default function NotificationsScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const token = user?.token;
 
   const username = user?.username ?? "User";
@@ -34,6 +34,7 @@ export default function NotificationsScreen() {
   const [showSettingDropdown, setShowSettingDropdown] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [sentInvites, setSentInvites] = useState<SentInviteItem[]>([]);
+  const [sentChores, setSentChores] = useState<SentChoreItem[]>([]);
   const [inviteStatuses, setInviteStatuses] = useState<Record<number, string>>({});
 
     const profileImageSource = user?.profile_url
@@ -60,6 +61,22 @@ type SentInviteItem = {
   created_at: string;
   responded_at: string | null;
 };
+
+type SentChoreItem = {
+  choreid: number;
+  name: string;
+  description: string;
+  request_date: string | null;
+  due_date: string | null;
+  requester_id: number | null;
+  assignee_id: number | null;
+  assignee: string | null;
+  status: string | null;
+};
+
+type SentItem =
+  | { kind: "invite"; data: SentInviteItem; sortKey: string }
+  | { kind: "chore"; data: SentChoreItem; sortKey: string };
 
 const formatTime = (isoString: string) => {
   const date = new Date(isoString);
@@ -101,7 +118,7 @@ const getDisplayTime = (item: SentInviteItem) => {
 
 
   const fetchSentInvites = async () => {
-    if (!token) 
+    if (!token)
       return;
 
     try {
@@ -127,12 +144,42 @@ const getDisplayTime = (item: SentInviteItem) => {
     }
   };
 
+  const fetchSentChores = async () => {
+    if (!token || !user?.userid) return;
+
+    try {
+      const response = await fetch(`${API_URL}/chores`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.log("Sent chores error:", data);
+        return;
+      }
+
+      // Chores I requested AND assigned to someone else (not myself, not unassigned)
+      const myAssignments: SentChoreItem[] = data.filter(
+        (chore: SentChoreItem) =>
+          Number(chore.requester_id) === Number(user.userid) &&
+          chore.assignee_id !== null &&
+          Number(chore.assignee_id) !== Number(user.userid)
+      );
+
+      setSentChores(myAssignments);
+    } catch (error) {
+      console.log("Error fetching sent chores:", error);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === "sent") {
       fetchSentInvites();
+      fetchSentChores();
       fetchNotifications();
       fetchInviteHistory();
-     
+
        //fetchPendingInvites();
     }
   }, [activeTab, token]);
@@ -152,6 +199,8 @@ const getDisplayTime = (item: SentInviteItem) => {
     const data = await response.json();
 
     if (response.ok) {
+      await refreshUser();
+
       Alert.alert("Success", "Invite accepted!");
 
       setInviteStatuses((prev) => ({...prev, [inviteid]: "ACCEPTED",}));
@@ -422,42 +471,84 @@ const handleMarkAsRead = async (notificationid: number) => {
         </View>
 
           {activeTab === "sent" ? (
-            sentInvites.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Ionicons name="paper-plane-outline" size={42} color="#4A90E2" />
+            (() => {
+              const sentItems: SentItem[] = [
+                ...sentInvites.map((i) => ({
+                  kind: "invite" as const,
+                  data: i,
+                  sortKey: i.responded_at ?? i.created_at,
+                })),
+                ...sentChores.map((c) => ({
+                  kind: "chore" as const,
+                  data: c,
+                  sortKey: c.request_date ?? "",
+                })),
+              ].sort((a, b) => b.sortKey.localeCompare(a.sortKey));
 
-                <Text style={styles.emptyTitle}>No sent notifications yet</Text>
+              if (sentItems.length === 0) {
+                return (
+                  <View style={styles.emptyCard}>
+                    <Ionicons name="paper-plane-outline" size={42} color="#4A90E2" />
+                    <Text style={styles.emptyTitle}>No sent notifications yet</Text>
+                    <Text style={styles.emptyText}>
+                      Invites you send and chores you assign will appear here.
+                    </Text>
+                  </View>
+                );
+              }
 
-                <Text style={styles.emptyText}>
-                  Invites and requests you send to others will appear here.
-                </Text>
-              </View>
-            ) : (
-              sentInvites.map((item) => (
-                <View key={item.inviteid} style={styles.notificationCard}>
-                  <Text style={styles.notificationTitle}>Household Invite Sent</Text>
+              return sentItems.map((item) => {
+                if (item.kind === "invite") {
+                  const inv = item.data;
+                  return (
+                    <View key={`invite-${inv.inviteid}`} style={styles.notificationCard}>
+                      <Text style={styles.notificationTitle}>Household Invite Sent</Text>
+                      <Text style={styles.notificationMessage}>
+                        Invite sent to User ID: {inv.invitee_userid}
+                      </Text>
+                      <Text style={styles.timeText}>{getDisplayTime(inv)}</Text>
+                      <Text style={styles.statusText}>Status: {inv.status}</Text>
+                      {inv.status === "PENDING" ? (
+                        <TouchableOpacity
+                          style={[styles.cancelInviteButton, styles.declineButton]}
+                          onPress={() => handleCancelInvite(inv.inviteid)}
+                        >
+                          <Text style={styles.inviteButtonText}>Cancel Invite</Text>
+                        </TouchableOpacity>
+                      ) : inv.status === "CANCELED" ? (
+                        <Text style={styles.declinedStatus}>Canceled</Text>
+                      ) : inv.status === "ACCEPTED" ? (
+                        <Text style={styles.acceptedStatus}>Accepted</Text>
+                      ) : inv.status === "DECLINED" ? (
+                        <Text style={styles.declinedStatus}>Declined</Text>
+                      ) : null}
+                    </View>
+                  );
+                }
 
-                  <Text style={styles.notificationMessage}>  Invite sent to User ID: {item.invitee_userid} </Text>
-                  <Text style={styles.timeText}>{getDisplayTime(item)} </Text>
+                const chore = item.data;
+                const statusLabel = chore.status ?? "UNKNOWN";
+                const statusStyle =
+                  statusLabel === "COMPLETE"
+                    ? styles.acceptedStatus
+                    : statusLabel === "CANCELLED" || statusLabel === "UNASSIGNED"
+                    ? styles.declinedStatus
+                    : styles.statusText;
 
-                  <Text style={styles.statusText}>Status: {item.status}</Text>
-                    {item.status === "PENDING" ? (
-                      <TouchableOpacity
-                        style={[styles.cancelInviteButton, styles.declineButton]}
-                        onPress={() => handleCancelInvite(item.inviteid)}
-                      >
-                        <Text style={styles.inviteButtonText}>Cancel Invite</Text>
-                      </TouchableOpacity>
-                    ) : item.status === "CANCELED" ? (
-                      <Text style={styles.declinedStatus}>Canceled</Text>
-                    ) : item.status === "ACCEPTED" ? (
-                      <Text style={styles.acceptedStatus}>Accepted</Text>
-                    ) : item.status === "DECLINED" ? (
-                      <Text style={styles.declinedStatus}>Declined</Text>
-                    ) : null}
-                </View>
-              ))
-            )
+                return (
+                  <View key={`chore-${chore.choreid}`} style={styles.notificationCard}>
+                    <Text style={styles.notificationTitle}>Chore Assigned</Text>
+                    <Text style={styles.notificationMessage}>
+                      &quot;{chore.name}&quot; → {chore.assignee ?? "Unassigned"}
+                    </Text>
+                    <Text style={styles.timeText}>
+                      {chore.request_date ? `Sent: ${formatTime(chore.request_date)}` : ""}
+                    </Text>
+                    <Text style={statusStyle}>Status: {statusLabel}</Text>
+                  </View>
+                );
+              });
+            })()
 
         )  : notifications.length === 0 ? (
           <View style={styles.emptyCard}>
