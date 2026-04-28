@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { Chore } from "./ChoreContext";
 
@@ -22,12 +23,13 @@ type ChoreItemProps = {
   chore: Chore;
   onComplete: () => void;
   onStatusChange: (choreId: string, newStatus: string, assigneeId?: number | null) => void;
+  onDelete: (choreId: string) => void;
   showDropdownFor: string | null;
   onToggleDropdown: (choreId: string | null) => void;
   members: Member[];
 };
 
-export function ChoreItem({ chore, onComplete, onStatusChange, showDropdownFor, onToggleDropdown, members }: ChoreItemProps) {
+export function ChoreItem({ chore, onComplete, onStatusChange, onDelete, showDropdownFor, onToggleDropdown, members }: ChoreItemProps) {
   const isOpen = showDropdownFor === chore.id;
   const statusColor = STATUS_COLORS[chore.status ?? "UNASSIGNED"] ?? "#6B7280";
   const isUnassigned = chore.assignedTo === "Unassigned";
@@ -38,10 +40,26 @@ export function ChoreItem({ chore, onComplete, onStatusChange, showDropdownFor, 
     onToggleDropdown(null);
   };
 
+  const confirmDelete = () => {
+    Alert.alert(
+      "Delete chore?",
+      `"${chore.name}" will be removed permanently.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => onDelete(chore.id) },
+      ]
+    );
+  };
+
   return (
     <View style={styles.card}>
       <View style={styles.content}>
-        <Text style={styles.title}>{chore.name}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{chore.name}</Text>
+          <TouchableOpacity onPress={confirmDelete} style={styles.deleteButton} hitSlop={8}>
+            <Ionicons name="trash-outline" size={20} color="#dc2626" />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.assignee}>Assigned to: {chore.assignedTo}</Text>
         <Text style={styles.meta}>Request date: {chore.requestDate ?? "Unknown"}</Text>
         <Text style={styles.meta}>Due date: {chore.dueDate ?? "Unknown"}</Text>
@@ -131,11 +149,21 @@ const styles = StyleSheet.create({
   content: {
     marginBottom: 4,
   },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
   title: {
+    flex: 1,
     fontSize: 18,
     fontWeight: "bold",
     color: "#111827",
     marginBottom: 8,
+  },
+  deleteButton: {
+    paddingLeft: 8,
+    paddingTop: 2,
   },
   description: {
     fontSize: 14,
