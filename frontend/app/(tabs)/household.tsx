@@ -1,6 +1,7 @@
 import {
   useState, 
-  useEffect
+  useEffect,
+  useCallback
 } from "react"; 
 import {
   View, 
@@ -11,11 +12,22 @@ import {
   TextInput,
   FlatList,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Modal,
+  Pressable,
+  Image,
+  ScrollView,
+  ImageBackground
 } from "react-native";
-const API_URL = "https://chorely-beta-release.onrender.com";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
+//const API_URL = "https://chorely-beta-release.onrender.com";
+//const API_URL = "http://10.0.0.7:8000"
+//const API_URL = "http://127.0.0.1:8000"
+const API_URL = "https://chorely-final-1v-release.onrender.com"
 
 import { useAuth } from "../../components/AuthContext";
+
 interface Member {
   userid: number;
   username: string;
@@ -27,15 +39,37 @@ interface Member {
 export default function Household() {
   const [loading, setLoading] = useState(false);
   const [hasHousehold, setHasHousehold] = useState(false);
-  const [members, setMembers] = useState([]);
+  const [members, setMembers] = useState<Member[]>([]);
+
   const [joinUserId, setJoinUserId] = useState("");
   const [isAddingUser, setIsAddingUser] = useState(false);
 
   const [householdid, setHouseholdid] = useState<string | null>(null);
   const [memberCount, setMemberCount] = useState<number | null>(null);
 
-  const { user } = useAuth(); //get the 'user' object from useAuth instead of 'token' directly
+  const {user, logout, refreshUser } = useAuth(); //get the 'user' object from useAuth instead of 'token' directly
   const token = user?.token; //grab the token from the user object
+
+  //new UI 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showDropdownFor, setShowDropdownFor] = useState<string | null>(null);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showHomeDropdown, setShowHomeDropdown] = useState(false);
+  const [showSettingDropdown, setShowSettingDropdown] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const username = user?.username ?? "User";
+  const userId = user?.userid ?? "N/A";
+  const phone = user?.phone_num ?? "N/A";
+  const email = user?.email ?? "N/A";
+
+  const [searchResults, setSearchResults] = useState<Member[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [invitingUserId, setInvitingUserId] = useState<number | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+
+  const profileImageSource = user?.profile_url
+  ? { uri: user.profile_url }
+  : require("../../assets/images/default_profile.png");
 
 const fetchMembers = async () => {
     if (!token) 
@@ -52,6 +86,14 @@ const fetchMembers = async () => {
         const data = await response.json();
         setMembers(data);
         setHasHousehold(true); //shows the list if user is in household
+
+        const owner = data[0]; 
+        if (owner && owner.userid === user?.userid) {
+          setIsOwner(true);
+        } else {
+          setIsOwner(false);
+        }
+
       } else {
         setHasHousehold(false);
       }
@@ -85,10 +127,15 @@ const fetchMembers = async () => {
     }
   };
 
-  useEffect(() => {
-  fetchMembers();
-  fetchHouseholdInfo();
-}, [token]);
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        fetchMembers();
+        fetchHouseholdInfo();
+        fetchOwnerStatus();
+      }
+    }, [token]) 
+  );
 
   const handleCreateHousehold = async () => {
     try {
@@ -117,6 +164,8 @@ const fetchMembers = async () => {
       setHouseholdid(String(data.householdid));
       setMemberCount(data.member_count);
       setHasHousehold(true);
+
+      await refreshUser();
 
       Alert.alert(
         "Success",
@@ -206,6 +255,8 @@ const handleJoinHousehold = async () => {
     setMemberCount(null);
     setIsAddingUser(false);
     setJoinUserId("");
+
+    await refreshUser();
   } catch (error) {
     console.log("Leave household error:", error);
     Alert.alert("Error", "Something went wrong while leaving the household.");
@@ -214,38 +265,369 @@ const handleJoinHousehold = async () => {
   }
 };
 
-  
-  const showMember = ({ item }: { item: Member }) => (
-    <View style={styles.memberCard}>
-      <Text style={styles.memberName}>{item.fname} {item.lname}</Text>
-      <Text style={styles.memberDetails}>Username: {item.username}</Text>
-    </View>
+
+const handleRemoveMember = (member: Member) => {
+  if (!token) {
+    Alert.alert("Error", "Please log in again.");
+    return;
+  }
+
+  Alert.alert(
+    "Remove Member",
+    `Are you sure you want to remove ${member.fname} ${member.lname} from the household?`,
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setLoading(true);
+
+            const response = await fetch(`${API_URL}/households/remove`, {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                userid: member.userid,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              Alert.alert("Error", data.detail || "Failed to remove member.");
+              return;
+            }
+
+            Alert.alert("Success", data.message || "User removed successfully.");
+
+            await fetchMembers();
+            await fetchHouseholdInfo();
+          } catch (error) {
+            console.log("Remove member error:", error);
+            Alert.alert("Error", "Something went wrong while removing the member.");
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+    ]
   );
+};
+
+
+const handleTransferOwnership = (member: Member) => {
+  if (!token) {
+    Alert.alert("Error", "Please log in again.");
+    return;
+  }
+
+  Alert.alert(
+    "Transfer Ownership",
+    `Are you sure you want to make ${member.fname} ${member.lname} the household owner?`,
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Transfer",
+        style: "default",
+        onPress: async () => {
+          try {
+            setLoading(true);
+
+            const response = await fetch(`${API_URL}/households/transfer-ownership`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                new_owner_userid: member.userid,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              Alert.alert("Error", data.detail || "Failed to transfer ownership.");
+              return;
+            }
+
+            Alert.alert("Success", data.message || "Ownership transferred successfully.");
+
+            setIsOwner(false);
+
+            await fetchMembers();
+            await fetchHouseholdInfo();
+            await fetchOwnerStatus();
+          } catch (error) {
+            console.log("Transfer ownership error:", error);
+            Alert.alert("Error", "Something went wrong while transferring ownership.");
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+    ]
+  );
+};
+
+  
+const showMember = ({ item }: { item: Member }) => {
+  const isCurrentUser = item.userid === user?.userid;
 
   return (
+    <View style={styles.memberCard}>
+      <View style={styles.memberInfo}>
+        <Text style={styles.memberName}>
+          {item.fname} {item.lname}
+          {isCurrentUser ? " (You)" : ""}
+        </Text>
+
+        <Text style={styles.memberDetails}>Username: {item.username}</Text>
+      </View>
+
+      {isOwner && !isCurrentUser && (
+        <View style={styles.memberActions}>
+          <TouchableOpacity
+            style={styles.transferOwnerButton}
+            onPress={() => handleTransferOwnership(item)}
+            disabled={loading}
+          >
+            <Text style={styles.transferOwnerButtonText}>Make Owner</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.removeMemberButton}
+            onPress={() => handleRemoveMember(item)}
+            disabled={loading}
+          >
+            <Text style={styles.removeMemberButtonText}>Remove</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+};
+
+
+  const handleSearchUsers = async (query: string) => {
+    setSearchQuery(query);
+
+    if (!token) {
+    console.log("No token found for user search");
+    setSearchResults([]);
+    return;
+    }
+    
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/user/search?q=${encodeURIComponent(query.trim())}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.log("Search error:", error);
+      setSearchResults([]);
+    }
+  };
+
+  useEffect(() => {
+  const timeout = setTimeout(() => {
+    if (searchQuery.length >= 2) {
+      handleSearchUsers(searchQuery);
+    } else {
+      setSearchResults([]); 
+    }
+  }, 300);
+
+  return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+
+  const handleSendInvite = async (inviteeUserId: number) => {
+    try {
+      setInvitingUserId(inviteeUserId);
+
+      const response = await fetch(`${API_URL}/households/invite`,  {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userid: inviteeUserId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        Alert.alert("Error", data.detail || "Failed to send invite.");
+        return;
+      }
+
+      Alert.alert("Success", "Invite sent successfully.");
+      setSearchQuery("");
+      setSearchResults([]);
+    } catch (error) {
+      console.log("Send invite error:", error);
+      Alert.alert("Error", "Something went wrong while sending the invite.");
+    } finally {
+      setInvitingUserId(null);
+    }
+  };
+
+
+  const fetchOwnerStatus = async () => {
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${API_URL}/households/owner-status`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setIsOwner(data.is_owner);
+    } else {
+      setIsOwner(false);
+    }
+  } catch (error) {
+    console.log("Owner status error:", error);
+    setIsOwner(false);
+  }
+};
+
+
+  return (
+   <ImageBackground
+         source={require("../../assets/images/background.png")}
+         style={styles.background}
+         resizeMode="cover"
+    >
+          {/* --- NEW HEADER START --- */}
+        <View style={styles.headerContainer}>
+          <View style={styles.greetingContainer}>
+            <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.avatarButton}>
+              <Image
+                source={profileImageSource} 
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
+            
+            <Text style={styles.greetingText}>Hi, {username}</Text>
+            
+          </View>
+
+          <View style={styles.householdInfoContainer}>
+            <Text style={styles.subTitleText}>
+                House ID: {householdid ?? "N/A"}
+            </Text>
+            <Text style={styles.subTitleText}>
+                Number of Members: {members.length}
+            </Text>
+          </View>
+        </View>
+        {/* --- NEW HEADER END --- */}
+
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {hasHousehold ? (
+        
         <View style={styles.listContainer}>
-          <Text style={styles.titleText}>Your Household Members</Text>
             
-            <Text style={styles.subTitleText}>
-                House ID: {householdid ?? "N/A"}
-            </Text>
+            {/* Search Bar */}
+                <View style={styles.searchContainer}>
+                  <View style = {styles.searchSection}>
+                     <Ionicons 
+                          name="search-outline" 
+                          size={20} 
+                          color="#888" 
+                           style={styles.searchIcon} 
+                        />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search members to invite..."
+                        placeholderTextColor="#888"
+                        value={searchQuery}
+                        onChangeText={handleSearchUsers}
+                    />
+                    </View>
+                 
+                  {searchLoading && (
+                      <Text style={styles.searchStatusText}>Searching...</Text>
+                    )}
 
-            <Text style={styles.subTitleText}>
-                Number of Members: {members.length}
-            </Text>
-            
-            <TouchableOpacity //this is the red button that allows a user to leave a household
-              style={styles.leaveButton}
-             onPress={handleLeaveHousehold}>
-            <Text style={styles.leaveButtonText}>Leave Household</Text>
-            
-          </TouchableOpacity>
+                    {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                      <Text style={styles.searchStatusText}>No matching users found.</Text>
+                    )}
 
+                    {searchResults.length > 0 && (
+                <View style={styles.searchResultsWrapper}>
+                  <ScrollView
+                    style={styles.searchResultsScroll}
+                    nestedScrollEnabled={true}
+                  >
+                    {searchResults.map((item) => (
+                      <View key={item.userid} style={styles.searchResultCard}>
+                        <View>
+                          <Text style={styles.searchResultUsername}>@{item.username}</Text>
+                          <Text style={styles.searchResultName}>
+                            {item.fname} {item.lname}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.inviteButton}
+                          onPress={() => handleSendInvite(item.userid)}
+                          disabled={invitingUserId === item.userid}
+                        >
+                          <Text style={styles.inviteButtonText}>
+                            {invitingUserId === item.userid ? "Sending..." : "send invite"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              
+              )}
+         
+                </View>
+
+                
+
+           <Text style={styles.subTitleText}>Members</Text>
+
+          {/*This is the card list that displays each user under members*/}
           <FlatList
             data={members}
             keyExtractor={(item) => item.userid.toString()}
@@ -254,48 +636,6 @@ const handleJoinHousehold = async () => {
             style={{ flex: 1 }}
           />
           
-          {isAddingUser ? (
-            <View style={styles.addMemberContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter User ID to add"
-                placeholderTextColor="#888"
-                value={joinUserId}
-                onChangeText={(text) => {const onlyNumbers = text.replace(/[^0-9]/g, '');
-                  setJoinUserId(onlyNumbers);
-                }} //this ensures no one types in any letters
-                keyboardType="numeric"
-              />
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.cancelButton]}
-                  onPress={() => {
-                    setIsAddingUser(false);
-                    setJoinUserId(""); // Clear input if they cancel
-                  }}
-                >
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.submitButton, loading && styles.disabledButton]}
-                  onPress={handleJoinHousehold}
-                  disabled={loading}
-                >
-                  <Text style={styles.buttonText}>
-                    {loading ? "Adding..." : "Add User"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity 
-              style={styles.floatingButton} 
-              onPress={() => setIsAddingUser(true)}
-            >
-              <Text style={styles.floatingButtonText}>+ Add User Here</Text>
-            </TouchableOpacity>
-          )}
 
         </View>
       ) : (
@@ -313,15 +653,143 @@ const handleJoinHousehold = async () => {
         </View>
       )}
     </KeyboardAvoidingView>
+
+        {/* --- NEW MODAL START --- */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menuContainer}>
+            <View style={styles.menuHeader}>
+              <Image
+                source={profileImageSource} 
+                style={styles.menuAvatar}
+              />
+              <Text style={styles.menuUsername}>Hello, {username}!</Text>
+              <Text style={styles.menuId}>ID: {userId}</Text>
+            </View>
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => setShowProfileDropdown((prev) => !prev)}
+            >
+              <Ionicons name="person-outline" size={20} color="#fff" />
+              <Text style={styles.menuText}>Personal Information</Text>
+              <View style={{ marginLeft: "auto" }}>
+                <Ionicons
+                  name={showProfileDropdown ? "chevron-up-outline" : "chevron-down-outline"}
+                  size={18}
+                  color="#fff"
+                />
+              </View>
+            </TouchableOpacity>
+
+            {showProfileDropdown && (
+              <View style={styles.profileDropdown}>
+                <Text style={styles.profileDetail}>
+                  <Text style={styles.profileLabel}>Username: </Text>
+                  {username}
+                </Text>
+                <Text style={styles.profileDetail}>
+                  <Text style={styles.profileLabel}>Email: </Text>
+                  {email}
+                </Text>
+                <Text style={styles.profileDetail}>
+                  <Text style={styles.profileLabel}>Phone: </Text>
+                  {phone}
+                </Text>
+                <Text style={styles.profileDetail}>
+                  <Text style={styles.profileLabel}>User ID: </Text>
+                  {userId}
+                </Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+              setMenuVisible(false);
+              router.push("/");
+            }}
+            >
+            <Ionicons name="home-outline" size={20} color="#fff" />
+            <Text style={styles.menuText}>Chore Board</Text>
+          </TouchableOpacity>
+
+              {/* new household tab where users can leave a household*/}
+             <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => setShowHomeDropdown((prev) => !prev)}
+            >
+              <Ionicons name="people" size={20} color="#fff" />
+              <Text style={styles.menuText}>Household</Text>
+              <View style={{ marginLeft: "auto" }}>
+                <Ionicons
+                  name={showSettingDropdown ? "chevron-up-outline" : "chevron-down-outline"}
+                  size={18}
+                  color="#fff"
+                />
+              </View>
+            </TouchableOpacity>
+
+            
+            {showHomeDropdown && (
+              <View style={styles.profileDropdown}>
+                <TouchableOpacity onPress={handleLeaveHousehold}>
+                <Text style={[styles.menuText, { color: "#ff8080" }]}>Leave Household</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+                 {/* end household dropdown */}
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuVisible(false);
+                  router.push("/notifications");
+                }}
+              >
+                <Ionicons name="notifications-outline" size={20} color="#fff" />
+                <Text style={styles.menuText}>Notifications</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={async () => {
+                  setMenuVisible(false);
+                  await logout();
+                  router.replace("/login");
+                }}
+              >
+                <Ionicons name="log-out-outline" size={20} color="#ff8080" />
+                <Text style={[styles.menuText, { color: "#ff8080" }]}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
+      {/* --- NEW MODAL END --- */}
+
+
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
     flex: 1,
-    backgroundColor: "#121212", 
+    //backgroundColor: "#121212", 
     paddingHorizontal: 24,
     paddingTop: 50,
+  },
+  background: {
+    flex: 1,
   },
   centerContent: {
     flex: 1,
@@ -339,12 +807,20 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
   },
+  title: {
+    paddingTop: 15,
+    fontSize: 30,
+    fontWeight: "bold",
+    alignSelf: "center", 
+    color: "rgba(235, 235, 235, 0.92)",
+    marginBottom: 10,
+  },
   subTitleText: {
     fontSize: 15,
     fontWeight: "bold",
     color: "white",
-    marginBottom: 20,
-    textAlign: "left",
+    marginBottom: 10,
+    textAlign: "left"
   },
   text: { 
     fontSize: 18,
@@ -353,20 +829,23 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   memberCard: {
-    backgroundColor: "#1e1e1e",
+    backgroundColor: "#ffffff",
     padding: 16,
     borderRadius: 8,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#333",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   memberName: {
-    color: "white",
+    color: "#000000",
     fontSize: 18,
     fontWeight: "600",
   },
   memberDetails: {
-    color: "#aaa",
+    color: "#000000",
     fontSize: 14,
     marginTop: 4,
   },
@@ -375,7 +854,7 @@ const styles = StyleSheet.create({
     top:"4.5%",
     //bottom: "20%",
     right: -10,
-    backgroundColor: "#2b75d5",
+    backgroundColor: "#000000",
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -456,8 +935,291 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: "#080a7e",
   },
+  searchContainer: {
+    paddingHorizontal: 0,
+    paddingVertical: 12,
+    width: '100%',
+    marginTop: 10,
+    marginBottom: 10,
+    paddingTop: "45%"
+  },
+  searchInput: {
+      backgroundColor: '#ffffff00',
+      borderRadius: 8,
+      padding: 12,
+      color: "white",
+      fontSize: 16,
+      flex: 1,
+  },
   buttonText: {
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
-  },});
+  },
+  searchSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    paddingHorizontal: 10,
+},
+searchIcon: {
+    marginRight: 10,
+},
+  headerContainer: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      paddingTop: 60, // space for status bar
+      paddingBottom: 16,
+      paddingHorizontal: 20,
+      zIndex: 10,
+  },
+  greetingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#010b1f", 
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 999, 
+    alignSelf: "flex-start", 
+  },
+  greetingText: {
+    paddingLeft: 4, 
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+   avatarButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 23,
+    overflow: "hidden",
+  },
+  avatar: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 23,
+    backgroundColor: "#333",
+  },
+  headerSpacer: {
+    width: 46,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    flexDirection: "row",
+  },
+  menuContainer: {
+    width: "80%",
+    height: "100%",
+    backgroundColor: "#1C1C1E",
+    paddingTop: 90,
+    paddingHorizontal: 16,
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
+    borderRightWidth: 1,
+    borderColor: "#2E2E32",
+  },
+  menuUsername: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 10,
+    paddingHorizontal: 8,
+    paddingTop: 30,
+  },
+  menuId: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 10,
+    paddingHorizontal: 8,
+    paddingTop: 30,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
+  menuText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  menuHeader: {
+    paddingTop: 40,
+    alignItems: "center",   // centers horizontally
+    justifyContent: "center",
+    marginBottom: 25,
+  },
+  menuAvatar: {
+    width: 90,
+    height: 90,
+    borderRadius: 40,
+    marginBottom: 10,
+    backgroundColor: "#333",
+  },
+  divider: {
+    height: 2,
+    backgroundColor: "#2E2E32",
+    marginVertical: 10,
+  },
+  profileDropdown: {
+    marginTop: 6,
+    marginBottom: 10,
+    marginHorizontal: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  profileDetail: {
+    color: "#fff",
+    fontSize: 14,
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  profileLabel: {
+    fontWeight: "700",
+    color: "#4A90E2",
+  },
+  householdInfoContainer: {
+  marginTop: 18,
+  paddingLeft: 6,
+},
+searchResultsContainer: {
+  marginTop: 8,
+  marginBottom: 16,
+},
+
+searchResultCard: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  backgroundColor: "rgba(255,255,255,0.95)",
+  borderRadius: 10,
+  paddingVertical: 12,
+  paddingHorizontal: 14,
+  marginBottom: 10,
+},
+
+searchResultUsername: {
+  fontSize: 16,
+  fontWeight: "700",
+  color: "#111",
+},
+
+searchResultName: {
+  fontSize: 14,
+  color: "#555",
+  marginTop: 2,
+},
+
+inviteButton: {
+  backgroundColor: "#2b75d5",
+  paddingVertical: 8,
+  paddingHorizontal: 14,
+  borderRadius: 8,
+},
+
+inviteButtonText: {
+  color: "white",
+  fontWeight: "bold",
+  fontSize: 14,
+},
+
+searchStatusText: {
+  color: "white",
+  fontSize: 14,
+  marginTop: 8,
+  marginBottom: 12,
+},
+searchDropdown: {
+  backgroundColor: "#1e1e1e",
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: "#333",
+  marginTop: 4,
+  overflow: "hidden",
+},
+searchResultItem: {
+  paddingVertical: 10,
+  paddingHorizontal: 14,
+  borderBottomWidth: 1,
+  borderBottomColor: "#2a2a2a",
+},
+noResultsText: {
+  color: "#888",
+  padding: 14,
+  textAlign: "center",
+},
+searchResultsWrapper: {
+  maxHeight: 220, // controls how many show (~3 cards)
+  marginTop: 8,
+  borderRadius: 10,
+  overflow: "hidden",
+},
+
+searchResultsScroll: {
+  width: "100%",
+},
+memberInfo: {
+  flex: 1,
+  paddingRight: 10,
+},
+
+removeMemberButton: {
+  backgroundColor: "transparent",
+  borderWidth: 1,
+  borderColor: "#ff4444",
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 8,
+},
+removeMemberButtonText: {
+  color: "#ff4444",
+  fontWeight: "bold",
+  fontSize: 13,
+},
+memberActions: {
+  alignItems: "flex-end",
+  gap: 8,
+},
+transferOwnerButton: {
+  backgroundColor: "transparent",
+  borderWidth: 1,
+  borderColor: "#2b75d5",
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 8,
+},
+transferOwnerButtonText: {
+  color: "#2b75d5",
+  fontWeight: "bold",
+  fontSize: 13,
+},
+memberAvatar: {
+  width: 52,
+  height: 52,
+  borderRadius: 26,
+  backgroundColor: "#413f3f",
+  borderColor: "#000000",
+  borderWidth: 1,
+  marginRight: 12,
+},
+memberLeft: {
+  flexDirection: "row",
+  alignItems: "center",
+  flex: 1,
+},
+  });

@@ -405,3 +405,20 @@ def transfer_household_ownership_route(
         )
 
     return {"message": "Household ownership transferred successfully"}
+
+
+@router.get("/owner-status")
+def get_owner_status(current_user: UserResponse = Depends(get_current_user)):
+    householdid = current_user.householdid
+
+    if householdid is None:
+        raise HTTPException(
+            status_code=400,
+            detail="User is not part of a household",
+        )
+
+    user_owned_householdid = get_owner_householdid(current_user.userid)
+
+    return {
+        "is_owner": user_owned_householdid == householdid
+    }

@@ -1,13 +1,17 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = "https://chorely-beta-release.onrender.com";
+//const API_URL = "https://chorely-beta-release.onrender.com";
+const API_URL = "https://chorely-final-1v-release.onrender.com";
 
 type AuthUser = {
   userid: number | null;
   username: string;
+  email: string;
+  phone_num: string | null ;
   householdid: number | null;
   token: string;
+  profile_url: string | null;
 };
 
 type AuthContextValue = {
@@ -15,6 +19,8 @@ type AuthContextValue = {
   login: (username: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  updateProfilePic: (profileUrl: string | null) => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -69,23 +75,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return "Failed to load user profile";
       }
 
-      const meData = await meResponse.json();
+       const meData = await meResponse.json();
+
+      let profileUrl: string | null = meData.profile_url ?? null; 
+
+      const picResponse = await fetch(`${API_URL}/user/profile-pic`, { 
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (picResponse.ok) {
+        const picData = await picResponse.json();
+        profileUrl = picData.url ?? null;
+      }
 
       const authUser: AuthUser = {
         token,
         userid: meData.userid,
         username: meData.username,
+        email: meData.email,
+        phone_num: meData.phone_num,
         householdid: meData.householdid ?? null,
+        profile_url: meData.profile_url ?? null,
       };
+
+      const savedPic = await AsyncStorage.getItem(`profile_url_${meData.userid}`);
+      if (savedPic) {
+        authUser.profile_url = savedPic;
+      }
 
       // save to AsyncStorage so session doesnt end when app is closed
       await AsyncStorage.setItem("auth_user", JSON.stringify(authUser));
       setUser(authUser);
 
-      return null; // null = success
+      return null; 
     } catch (e) {
       return "Could not connect to the server";
     }
+  };
+
+    const updateProfilePic = async (profileUrl: string | null) => {
+    setUser((prevUser) => {
+      if (!prevUser) return prevUser;
+
+      const updatedUser = {
+        ...prevUser,
+        profile_url: profileUrl,
+      };
+
+      AsyncStorage.setItem("auth_user", JSON.stringify(updatedUser));
+      AsyncStorage.setItem(`profile_url_${prevUser.userid}`, profileUrl ?? "");
+
+      return updatedUser;
+    });
   };
 
   const logout = async () => {
@@ -93,8 +134,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    if (!user?.token) return;
+    try {
+      const res = await fetch(`${API_URL}/user`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      if (!res.ok) return;
+      const meData = await res.json();
+      const updated: AuthUser = {
+        ...user,
+        userid: meData.userid,
+        username: meData.username,
+        email: meData.email,
+        phone_num: meData.phone_num,
+        householdid: meData.householdid ?? null,
+      };
+      setUser(updated);
+      await AsyncStorage.setItem("auth_user", JSON.stringify(updated));
+    } catch (e) {
+      // silent fail — caller can decide whether to surface
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, updateProfilePic, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

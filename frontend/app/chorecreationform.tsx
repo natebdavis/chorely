@@ -15,7 +15,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { useAuth } from "../components/AuthContext";
 
-const API_URL = "https://chorely-beta-release.onrender.com";
+//const API_URL = "https://chorely-beta-release.onrender.com";
+const API_URL = "https://chorely-final-1v-release.onrender.com";
 
 type Member = {
   userid: number;
@@ -31,8 +32,13 @@ export default function CreateChore() {
 
   const [choreName, setChoreName] = useState("");
   const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState(new Date());
+  const [dueDate, setDueDate] = useState(() => {
+    const d = new Date();
+    d.setHours(d.getHours() + 1, 0, 0, 0);
+    return d;
+  });
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedAssignee, setSelectedAssignee] = useState<Member | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -155,15 +161,26 @@ export default function CreateChore() {
               textAlignVertical="top"
             />
 
-            {/* Due date picker */}
-            <TouchableOpacity
-              style={styles.input}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={{ color: "#333" }}>
-                Due: {dueDate.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}
-              </Text>
-            </TouchableOpacity>
+            {/* Due date + time pickers */}
+            <View style={styles.dateTimeRow}>
+              <TouchableOpacity
+                style={[styles.input, styles.dateTimeInput]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={{ color: "#333" }}>
+                  {dueDate.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.input, styles.dateTimeInput]}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Text style={{ color: "#333" }}>
+                  {dueDate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {showDatePicker && (
               <DateTimePicker
@@ -172,7 +189,26 @@ export default function CreateChore() {
                 minimumDate={new Date()}
                 onChange={(event, date) => {
                   setShowDatePicker(false);
-                  if (date) setDueDate(date);
+                  if (date) {
+                    const combined = new Date(date);
+                    combined.setHours(dueDate.getHours(), dueDate.getMinutes(), 0, 0);
+                    setDueDate(combined);
+                  }
+                }}
+              />
+            )}
+
+            {showTimePicker && (
+              <DateTimePicker
+                value={dueDate}
+                mode="time"
+                onChange={(event, time) => {
+                  setShowTimePicker(false);
+                  if (time) {
+                    const combined = new Date(dueDate);
+                    combined.setHours(time.getHours(), time.getMinutes(), 0, 0);
+                    setDueDate(combined);
+                  }
                 }}
               />
             )}
@@ -281,6 +317,15 @@ const styles = StyleSheet.create({
   },
   descriptionInput: {
     minHeight: 130,
+  },
+  dateTimeRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 15,
+  },
+  dateTimeInput: {
+    flex: 1,
+    marginBottom: 0,
   },
   dropdown: {
     backgroundColor: "white",

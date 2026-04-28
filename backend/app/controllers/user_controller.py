@@ -7,10 +7,13 @@ Contributors: Edmund Krajewski, Gilligan Berlinski
 """
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from typing import List
 import uuid, mimetypes
 
 from app.database import (
     get_user,
+    get_users,
+    get_all_users,
     add_user,
     is_username_available,
     is_email_available,
@@ -33,6 +36,41 @@ from app.utils import get_password_hash, ALLOWED_IMAGE_TYPES, ALLOWED_EXTENSIONS
 
 router = APIRouter(tags=["users"], prefix="/user")
 """ API router for user-related endpoints."""
+
+
+
+@router.get("/search", response_model=list[UserResponse])
+def search_users(
+    q: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Search users by username
+    """
+    if len(q.strip()) < 2:
+        return []
+
+    users = get_all_users()
+    query = q.lower().strip()
+
+    results = []
+
+    for user in users:
+        if user.userid == current_user.userid:
+            continue
+
+        if user.householdid == current_user.householdid:
+            continue
+
+        if user.householdid is not None:
+           continue
+
+        if (
+            query in user.username.lower()
+        ):
+            results.append(user)
+            
+    return results
 
 
 @router.get("/by-username/{username}", response_model=UserResponse)

@@ -12,7 +12,7 @@ export default function HomeLayout() {
           tabBarStyle: styles.tabBar,
           tabBarActiveTintColor: "#4A90E2",
           tabBarInactiveTintColor: "#6E6E73",
-          sceneStyle: { backgroundColor: "#0D0D0D" }, // screen background
+          sceneStyle: { backgroundColor: "#0D0D0D" },
         }}
       >
         <Tabs.Screen
@@ -27,12 +27,10 @@ export default function HomeLayout() {
         <Tabs.Screen
           name="household"
           options={{
+            // This pushes the entire tab button (hitbox + icon) to the left
+            tabBarItemStyle: { marginRight: 35 }, 
             tabBarIcon: ({ color }) => (
-              <Ionicons name="people"
-                size={28}
-                color={color}
-                 style={{ transform: [{ translateX: -20 }] }} // moved the icon to the left 
-                 />
+              <Ionicons name="people" size={28} color={color} />
             ),
           }}
         />
@@ -40,21 +38,19 @@ export default function HomeLayout() {
         <Tabs.Screen
           name="leaderboard"
           options={{
+            // This pushes the entire tab button (hitbox + icon) to the right
+            tabBarItemStyle: { marginLeft: 35 },
             tabBarIcon: ({ color }) => (
-              <Ionicons name="trophy"
-                size={28}
-                color={color}
-                 style={{ transform: [{ translateX: 20 }] }} //this moved the icon to the right 
-                 />
-              ),
+              <Ionicons name="trophy" size={28} color={color} />
+            ),
           }}
         />
 
         <Tabs.Screen
-          name="profile"
+          name="notifications"
           options={{
             tabBarIcon: ({ color }) => (
-              <Ionicons name="settings-outline" size={28} color={color} />
+              <Ionicons name="notifications-outline" size={28} color={color} />
             ),
           }}
         />

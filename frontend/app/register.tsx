@@ -38,8 +38,10 @@ export default function Register() {
   const isPasswordValid = password.length === 0 || password.length >= 6;
   const cleanedPhoneForCheck = phoneNum.replace(/\D/g, "");
   const isPhoneValid = phoneNum.length === 0 || cleanedPhoneForCheck.length === 10;
+  const [isRegistering, setIsRegistering] = useState(false);
 
-  const API_URL = "https://chorely-beta-release.onrender.com";
+  //const API_URL = "https://chorely-beta-release.onrender.com";
+  const API_URL = "https://chorely-final-1v-release.onrender.com";
   
   //this makes the phone number appear like (XXX)-XXX-XXXX
     const formatPhoneNumber = (text: string) => {
@@ -99,6 +101,8 @@ export default function Register() {
   
 
     try {
+      setIsRegistering(true);
+
       const response = await fetch(`${API_URL}/user/create`, {
         method: "POST",
         headers: {
@@ -138,7 +142,9 @@ export default function Register() {
     } catch (error) {
       console.error("Register error:", error);
       Alert.alert("Connection error", "Could not connect to the backend.");
-    }
+    }finally {
+    setIsRegistering(false);
+  }
   };
 
   return (
@@ -282,8 +288,14 @@ export default function Register() {
                 {confirmPassword.length > 0 && passwordsMatch && (
                   <Text style={styles.successText}>Passwords match</Text>)}
 
-              <TouchableOpacity  style={styles.button} onPress={handleRegister}>
-                <Text style={styles.buttonText}>Register</Text>
+              <TouchableOpacity
+                style={[styles.button, isRegistering && styles.disabledButton]}
+                onPress={handleRegister}
+                disabled={isRegistering}
+              >
+                <Text style={styles.buttonText}>
+                  {isRegistering ? "Registering..." : "Register"}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.secondaryButton}
@@ -400,4 +412,7 @@ successText: {
     marginBottom: 20,
     alignSelf: "center"
   },
+  disabledButton: {
+  opacity: 0.7,
+}
 });
