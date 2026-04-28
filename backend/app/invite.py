@@ -1,18 +1,18 @@
-from enum import Enum
-from typing import Union
-from pydantic import BaseModel
-
-
 """
 Module for managing household invite operations.
 
 Contributors: Edmund Krajewski
 """
+from enum import Enum
+from typing import Union
+from pydantic import BaseModel
 
 INVITE_TABLE_NAME = "household_invites"
+"""Table name for household invites."""
 
 
 class Invite_Col_Name(Enum):
+    """Column names for household invite database table."""
     inviteid = "inviteid"
     householdid = "householdid"
     inviter_userid = "inviter_userid"
@@ -23,6 +23,7 @@ class Invite_Col_Name(Enum):
 
 
 class InviteStatus(str, Enum):
+    """Enumeration of possible statuses for household invites."""
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     DECLINED = "DECLINED"
@@ -30,6 +31,7 @@ class InviteStatus(str, Enum):
 
 
 class InviteCreateRequest(BaseModel):
+    """Request body schema for creating a new household invite."""
     householdid: int
     inviter_userid: int
     invitee_userid: int
@@ -38,6 +40,7 @@ class InviteCreateRequest(BaseModel):
 
 
 class InviteResponse(BaseModel):
+    """Response schema returned for household invite-related API requests."""
     inviteid: int
     householdid: int
     inviter_userid: int
@@ -48,11 +51,13 @@ class InviteResponse(BaseModel):
 
 
 class InviteStatusUpdateRequest(BaseModel):
+    """Request body schema for updating the status of a household invite."""
     status: str
     responded_at: str
 
 
 def create_InviteResponse(data: dict) -> InviteResponse:
+    """Helper function to create an InviteResponse object from a database record dictionary."""
     return InviteResponse(
         inviteid=data[Invite_Col_Name.inviteid.value],
         householdid=data[Invite_Col_Name.householdid.value],

@@ -1,3 +1,8 @@
+"""
+Main entry point for the Chorely backend application.
+
+Contributers: Gilligan Berlinski, Edmund Krajewski
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -33,4 +38,5 @@ app.include_router(leaderboard_router)
 
 @app.get("/")
 def root():
+    """Root endpoint to verify that the backend is running."""
     return {"message": "Backend is running"}

@@ -1,3 +1,9 @@
+"""
+Utility functions and variables for the Chorely backend application.
+
+Contributers: Gilligan Berlinski
+"""
+
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
@@ -10,8 +16,11 @@ from fastapi import HTTPException, status
 from enum import Enum
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+"""Password hashing context using bcrypt algorithm."""
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+"""OAuth2 scheme for token-based authentication."""
 BUCKET = "images"
+"""AWS S3 bucket name for storing user profile pictures."""
 
 ALLOWED_IMAGE_TYPES = {
     "image/jpeg",
@@ -19,17 +28,22 @@ ALLOWED_IMAGE_TYPES = {
     "image/webp",
     "image/gif"
 }
+"""Set of allowed MIME types for user profile picture uploads."""
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+"""Set of allowed file extensions for user profile picture uploads."""
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+"""Maximum allowed file size for user profile picture uploads (50 MB)."""
 
 class DateFilter(str, Enum):
+    """Enumeration of date filters for chore retrieval."""
     TODAY = "today"
     WEEK = "week"
     MONTH = "month"
 
 
 class Weekday(int, Enum):
+    """Enumeration of weekdays for chore template recurrence patterns."""
     SUNDAY = 6
     MONDAY = 0
     TUESDAY = 1
@@ -92,5 +106,6 @@ class TokenData(BaseModel):
 credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},)
+"""Predefined HTTP exception for invalid credentials during authentication."""
 
 

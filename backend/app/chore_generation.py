@@ -1,3 +1,9 @@
+"""
+Module for generating chore instances from recurring chore templates
+and preparing range-based calendar responses.
+
+Contributor: Edmund Krajewski
+"""
 from datetime import datetime, timedelta, timezone
 from typing import Union
 
@@ -18,12 +24,6 @@ from app.db.chore_repo import add_chore
 from app.db.chore_template_repo import get_chore_templates
 from app.db.client import get_client
 
-"""
-Module for generating chore instances from recurring chore templates
-and preparing range-based calendar responses.
-
-Contributor: Edmund Krajewski
-"""
 
 def _normalize_datetime(value: datetime) -> datetime:
     """
@@ -37,12 +37,18 @@ def _normalize_datetime(value: datetime) -> datetime:
 
 
 def _to_datetime(value: str | None) -> datetime | None:
+    """
+    Convert ISO datetime string to datetime object, or return None if input is None.
+    """
     if value is None:
         return None
     return _normalize_datetime(datetime.fromisoformat(value))
 
 
 def _date_key(value: datetime | str) -> str:
+    """
+    Convert a datetime or ISO datetime string to a date key in 'YYYY-MM-DD' format.
+    """
     if isinstance(value, str):
         value = datetime.fromisoformat(value)
     value = _normalize_datetime(value)
@@ -50,6 +56,9 @@ def _date_key(value: datetime | str) -> str:
 
 
 def _daterange(start: datetime, end: datetime):
+    """
+    Generate datetimes for each day in the range from start to end (inclusive).
+    """
     start = _normalize_datetime(start)
     end = _normalize_datetime(end)
 
@@ -63,6 +72,9 @@ def _build_due_datetime(
     template: ChoreTemplateResponse,
     scheduled_day: datetime,
 ) -> datetime:
+    """
+    Build a due datetime for a chore instance based on the template's start date and the scheduled day.
+    """
     start_dt = _to_datetime(template.start_date)
     if start_dt is None:
         raise ValueError("Template start_date is required.")
@@ -86,6 +98,9 @@ def chore_instance_exists(
     due_date: datetime,
     client: Union[Client, None] = None,
 ) -> bool:
+    """
+    Check if a chore instance already exists for the given template ID and due date.
+    """
     if client is None:
         client = get_client()
 
@@ -109,6 +124,9 @@ def generate_chore_from_template(
     due_date: datetime,
     client: Union[Client, None] = None,
 ):
+    """
+    Generate a chore instance from a template with the specified due date.
+    """
     if client is None:
         client = get_client()
 
@@ -140,6 +158,9 @@ def generate_due_chores_for_household_in_range(
     range_end: datetime,
     client: Union[Client, None] = None,
 ) -> int:
+    """
+    Generate chore instances for all templates in the household that are due within the specified date range.
+    """
     if client is None:
         client = get_client()
 
@@ -172,6 +193,9 @@ def build_chores_by_date(
     range_start: datetime,
     range_end: datetime,
 ) -> dict[str, list[ChoreResponse]]:
+    """
+    Build a dictionary mapping dates to lists of chores due on those dates.
+    """
     chores_by_date = {
         day.date().isoformat(): [] for day in _daterange(range_start, range_end)
     }
@@ -196,6 +220,9 @@ def build_calendar_meta(
     now: Union[datetime, None] = None,
     current_user_id: Union[int, None] = None,
 ) -> dict[str, CalendarDateMetaResponse]:
+    """
+    Build a dictionary mapping dates to metadata about the chores due on those dates, such as counts and flags for incomplete/overdue/high-priority chores.
+    """
 
     if now is None:
         now = datetime.now(timezone.utc)
@@ -246,6 +273,9 @@ def build_chore_range_response(
     now: Union[datetime, None] = None,
     current_user_id: Union[int, None] = None,
 ) -> ChoreRangeResponse:
+    """
+    Build a ChoreRangeResponse containing chores grouped by date and calendar metadata for the specified date range.
+    """
 
     return ChoreRangeResponse(
         chores_by_date=build_chores_by_date(chores, range_start, range_end),

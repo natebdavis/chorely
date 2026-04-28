@@ -1,15 +1,15 @@
-from enum import Enum
-from typing import Union
-
-from pydantic import BaseModel, Field
-
 """
 Module for managing recurring Chore Template operations.
 
 Contributors: Edmund Krajewski
 """
+from enum import Enum
+from typing import Union
+
+from pydantic import BaseModel, Field
 
 CHORE_TEMPLATE_TABLE_NAME = "chore_templates"
+"""Table name for recurring chore template."""
 
 
 class ChoreTemplate_Col_Name(Enum):
@@ -36,6 +36,7 @@ class ChoreTemplate_Col_Name(Enum):
 
 
 class RepeatType(str, Enum):
+    """Enumeration of supported recurrence patterns for chore templates."""
     DAILY = "DAILY"
     WEEKDAY = "WEEKDAY"
     WEEKLY = "WEEKLY"
@@ -44,6 +45,7 @@ class RepeatType(str, Enum):
 
 
 class TimeBucket(str, Enum):
+    """Enumeration of time buckets for chore templates."""
     START_OF_DAY = "START_OF_DAY"
     AFTERNOON = "AFTERNOON"
     EVENING = "EVENING"
@@ -141,6 +143,9 @@ class ChoreTemplateResponse(BaseModel):
 
 
 def create_ChoreTemplateCreateRequest(data: dict) -> ChoreTemplateCreateRequest:
+    """
+    Convert a dictionary of database values into a ChoreTemplateCreateRequest object.
+    """
     return ChoreTemplateCreateRequest(
         householdid=data[ChoreTemplate_Col_Name.householdid.value],
         created_by=data[ChoreTemplate_Col_Name.created_by.value],
@@ -163,6 +168,9 @@ def create_ChoreTemplateCreateRequest(data: dict) -> ChoreTemplateCreateRequest:
 
 
 def create_ChoreTemplateResponse(data: dict) -> ChoreTemplateResponse:
+    """
+    Convert a dictionary of database values into a ChoreTemplateResponse object.
+    """
     return ChoreTemplateResponse(
         templateid=data[ChoreTemplate_Col_Name.templateid.value],
         householdid=data[ChoreTemplate_Col_Name.householdid.value],

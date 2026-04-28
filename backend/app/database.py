@@ -1,3 +1,8 @@
+"""
+Module for managing database operations.
+Aggregates all database functions from the various repository modules into a single importable module.
+Contributors: Edmund Krajewski, Gilligan Berlinski, Nathaniel Davis
+"""
 from app.db.client import get_client
 
 from app.db.auth_repo import (

@@ -1,3 +1,8 @@
+"""
+Module for recurring chore schedule calculations.
+
+Contributors: Edmund Krajewski
+"""
 from datetime import datetime, timedelta
 from typing import Iterable
 
@@ -5,12 +10,6 @@ from app.chore_template import (
     ChoreTemplateResponse,
     RepeatType,
 )
-
-"""
-Module for recurring chore schedule calculations.
-
-Contributors: Edmund Krajewski
-"""
 
 
 def _to_datetime(value: str | None) -> datetime | None:

@@ -1,14 +1,14 @@
+"""
+Module for managing User operations.
+Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
+"""
 from enum import Enum
 from pydantic import BaseModel, EmailStr
 from typing import Union
 from collections.abc import Iterable
 
-"""
-Module for managing User operations.
-Contributers: Gilligan Berlinski, Nathaniel Davis, Edmund Krajewski
-"""
-
 USER_TABLE_NAME = "users"
+"""Table name for users."""
 
 
 class UserCreateRequest(BaseModel):
@@ -36,6 +36,7 @@ class UserCreateRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
+    """Response schema returned for User-related API requests."""
     userid: int
     username: str
     fname: str
@@ -47,6 +48,7 @@ class UserResponse(BaseModel):
     chore_reminder_hours_before_due: int = 24
 
 class UserReminderSettingsUpdateRequest(BaseModel):
+    """Request body schema for updating a User's chore reminder settings."""
     chore_reminder_hours_before_due: int
 
 class UserInUpdate(BaseModel):
@@ -88,6 +90,7 @@ class UserProfilePicResponse(BaseModel):
 
 
 class User_Col_Name(Enum):
+    """Column names for user database table."""
     userid = "userid"
     passhash = "passhash"
     username = "username"
@@ -101,6 +104,7 @@ class User_Col_Name(Enum):
 
 
 def create_UserCreateRequest(data: dict) -> UserCreateRequest:
+    """Helper function to create a UserCreateRequest object from a database record dictionary."""
     return UserCreateRequest(
         username=data[User_Col_Name.username.value],
         password=data[User_Col_Name.passhash.value],
@@ -116,6 +120,7 @@ def create_UserCreateRequest(data: dict) -> UserCreateRequest:
 
 
 def create_UserResponse(data: dict) -> UserResponse:
+    """Helper function to create a UserResponse object from a database record dictionary."""
     return UserResponse(
         userid=data[User_Col_Name.userid.value],
         username=data[User_Col_Name.username.value],
@@ -133,6 +138,7 @@ def create_UserResponse(data: dict) -> UserResponse:
 
 
 def create_UserInUpdate(data: dict) -> UserInUpdate:
+    """Helper function to create a UserInUpdate object from a database record dictionary."""
     return UserInUpdate(
         userid=data[User_Col_Name.userid.value],
         username=data[User_Col_Name.username.value],
@@ -149,6 +155,7 @@ def create_UserInUpdate(data: dict) -> UserInUpdate:
 
 
 def create_UsersToken(data: dict) -> UsersToken:
+    """Helper function to create a UsersToken object from a database record dictionary."""
     return UsersToken(
         access_token=data["access_token"],
         token_type=data["token_type"],
@@ -156,10 +163,12 @@ def create_UsersToken(data: dict) -> UsersToken:
 
 
 def get_full_name(user: UserResponse) -> str:
+    """Helper function to get the full name of a User from a UserResponse object."""
     return f"{user.fname} {user.lname}"
 
 
 def search_user(userid: int, users: Iterable[UserResponse]) -> Union[UserResponse, None]:
+    """Helper function to search for a UserResponse object in an iterable of UserResponse objects by userid."""
     for user in users:
         if user.userid == userid:
             return user

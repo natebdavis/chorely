@@ -1,3 +1,8 @@
+"""
+Module for managing Chore operations.
+Contributers: Gilligan Berlinski, Edmund Krajewski, Nathaniel Davis
+"""
+
 from enum import Enum, auto
 from pydantic import BaseModel, Field
 from typing import Union
@@ -200,6 +205,7 @@ class Priority(Enum):
 
 
 def create_ChoreCreateRequest(data: dict) -> ChoreCreateRequest:
+    """Convert a dictionary of database values into a ChoreCreateRequest object."""
     status = Status.IN_PROGRESS.name if data[Chore_Col_Name.assignee.value] else Status.UNASSIGNED.name
 
     return ChoreCreateRequest(
@@ -219,6 +225,7 @@ def create_ChoreCreateRequest(data: dict) -> ChoreCreateRequest:
 
 
 def create_ChoreUpdateRequest(data: dict) -> ChoreUpdateRequest:
+    """Convert a dictionary of database values into a ChoreUpdateRequest object."""
     status = data[Chore_Col_Name.status.value]
     assignee = data[Chore_Col_Name.assignee.value]
     priotity = data[Chore_Col_Name.priority.value]
@@ -234,12 +241,14 @@ def create_ChoreUpdateRequest(data: dict) -> ChoreUpdateRequest:
 
 
 def create_ChoreDeleteRequest(data: dict) -> ChoreDeleteRequest:
+    """Convert a dictionary of database values into a ChoreDeleteRequest object."""
     return ChoreDeleteRequest(
         choreid=data[Chore_Col_Name.choreid.value]
     )
 
 
 def create_ChoreEditRequest(data: dict) -> ChoreEditRequest:
+    """Convert a dictionary of database values into a ChoreEditRequest object."""
     return ChoreEditRequest(
         name=data[Chore_Col_Name.cname.value],
         description=data[Chore_Col_Name.description.value],
@@ -251,6 +260,7 @@ def create_ChoreEditRequest(data: dict) -> ChoreEditRequest:
 
 
 def create_ChoreResponse(data: dict, assignee: Union[UserResponse, None] = None) -> ChoreResponse:
+    """Convert a dictionary of database values into a ChoreResponse object."""
     assignee_name = get_full_name(assignee) if assignee else None
 
     return ChoreResponse(
@@ -272,6 +282,7 @@ def create_ChoreResponse(data: dict, assignee: Union[UserResponse, None] = None)
 
 
 def is_valid_status(status: str, assignee: Union[int, None] = None) -> bool:
+    """Validate that the given status is valid and consistent with the assignee."""
     status = status.upper()
 
     if status not in Status.__members__:
